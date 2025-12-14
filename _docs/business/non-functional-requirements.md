@@ -126,9 +126,15 @@ add_header X-Content-Type-Options "nosniff" always;
 # .github/workflows/ci.yml
 - name: Quality Gates
   run: |
-    pnpm run lint       # ESLint + Prettier (Node) - PNPM preferido
-    black --check .     # Python formatting
-    golangci-lint run   # Go linting
+    # Backend (Rust)
+    cargo fmt --check
+    cargo clippy -- -D warnings
+    cargo audit
+    cargo tarpaulin --out Xml
+    # Frontend (React/TypeScript)
+    pnpm run lint       # ESLint + Prettier
+    pnpm run type-check # TypeScript
+    # Analysis
     sonar-scanner      # SonarQube analysis
 ```
 
@@ -374,14 +380,14 @@ services:
 ### Microservices Labels
 
 ```yaml
-# Ejemplo: auth-service
+# Ejemplo: auth-service (Rust/Actix-web)
 auth-service:
-  build: ./be/fastapi/auth-service
+  build: ./be/auth-service
   labels:
     - 'traefik.enable=true'
     - 'traefik.http.routers.auth.rule=Host(`api.acc-lms.com`) && PathPrefix(`/api/v1/auth`)'
     - 'traefik.http.routers.auth.tls.certresolver=letsencrypt'
-    - 'traefik.http.services.auth.loadbalancer.server.port=8000'
+    - 'traefik.http.services.auth.loadbalancer.server.port=8080'
     - 'traefik.http.middlewares.auth-cors.headers.accesscontrolalloworigin=*'
     - 'traefik.http.routers.auth.middlewares=auth-cors'
 ```
@@ -394,7 +400,7 @@ traefik.http.middlewares.api-ratelimit.ratelimit.burst=100
 traefik.http.middlewares.api-ratelimit.ratelimit.average=10
 
 # Middleware para JWT validation
-traefik.http.middlewares.jwt-auth.forwardauth.address=http://auth-service:8000/validate
+traefik.http.middlewares.jwt-auth.forwardauth.address=http://auth-service:8080/validate
 traefik.http.middlewares.jwt-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Role
 
 # Circuit breaker
@@ -405,20 +411,23 @@ traefik.http.middlewares.circuit-breaker.circuitbreaker.expression=NetworkErrorR
 
 ```
 https://api.acc-lms.com/
-├── /api/v1/auth/*          → auth-service (FastAPI)
-├── /api/v1/users/*         → users-service (Go)
-├── /api/v1/courses/*       → courses-service (Express)
-├── /api/v1/ai/*            → ai-service (FastAPI)
-├── /api/v1/analytics/*     → analytics-service (Go)
-└── /api/v1/payments/*      → payments-service (Spring Boot)
+├── /api/v1/auth/*          → auth-service (Rust/Actix-web)
+├── /api/v1/users/*         → users-service (Rust/Actix-web)
+├── /api/v1/courses/*       → courses-service (Rust/Axum)
+├── /api/v1/content/*       → content-service (Rust/Actix-web)
+├── /api/v1/enrollments/*   → enrollments-service (Rust/Actix-web)
+├── /api/v1/payments/*      → payments-service (Rust/Actix-web)
+├── /api/v1/analytics/*     → analytics-service (Rust/Axum)
+├── /api/v1/ai/*            → ai-service (Rust/Actix-web)
+└── /api/v1/notifications/* → notifications-service (Rust/Actix-web)
 ```
 
 ### Health Checks y Service Discovery
 
 ```yaml
-# Health check obligatorio por servicio
+# Health check obligatorio por servicio (Rust services en puerto 8080)
 healthcheck:
-  test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+  test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
   interval: 30s
   timeout: 10s
   retries: 3

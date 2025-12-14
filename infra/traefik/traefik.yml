@@ -1,0 +1,119 @@
+# =============================================================================
+# ACC LMS - Traefik Static Configuration
+# =============================================================================
+# API Gateway configuration for microservices routing
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Global Configuration
+# -----------------------------------------------------------------------------
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+# -----------------------------------------------------------------------------
+# API and Dashboard
+# -----------------------------------------------------------------------------
+api:
+  dashboard: true
+  insecure: false # Require authentication in production
+
+# -----------------------------------------------------------------------------
+# Entry Points
+# -----------------------------------------------------------------------------
+entryPoints:
+  web:
+    address: ':8080'
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  websecure:
+    address: ':8443'
+    http:
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - security-headers@file
+        - rate-limit@file
+
+  metrics:
+    address: ':8082'
+
+# -----------------------------------------------------------------------------
+# Providers
+# -----------------------------------------------------------------------------
+providers:
+  docker:
+    endpoint: 'unix:///var/run/docker.sock'
+    exposedByDefault: false
+    network: acc-backend
+    watch: true
+
+  file:
+    directory: '/etc/traefik/dynamic'
+    watch: true
+
+# -----------------------------------------------------------------------------
+# Certificate Resolvers (Let's Encrypt)
+# -----------------------------------------------------------------------------
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@acc-lms.com
+      storage: /etc/traefik/acme.json
+      httpChallenge:
+        entryPoint: web
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+log:
+  level: INFO
+  format: json
+  filePath: '/var/log/traefik/traefik.log'
+
+accessLog:
+  filePath: '/var/log/traefik/access.log'
+  format: json
+  filters:
+    statusCodes:
+      - '400-599'
+    retryAttempts: true
+    minDuration: '100ms'
+  fields:
+    headers:
+      names:
+        X-Request-ID: keep
+        Authorization: drop
+
+# -----------------------------------------------------------------------------
+# Metrics (Prometheus)
+# -----------------------------------------------------------------------------
+metrics:
+  prometheus:
+    entryPoint: metrics
+    buckets:
+      - 0.1
+      - 0.3
+      - 1.2
+      - 5.0
+
+# -----------------------------------------------------------------------------
+# Tracing (Jaeger)
+# -----------------------------------------------------------------------------
+tracing:
+  jaeger:
+    samplingServerURL: 'http://jaeger:5778/sampling'
+    localAgentHostPort: 'jaeger:6831'
+    propagation: jaeger
+    traceContextHeaderName: uber-trace-id
+
+# -----------------------------------------------------------------------------
+# Health Check
+# -----------------------------------------------------------------------------
+ping:
+  entryPoint: web

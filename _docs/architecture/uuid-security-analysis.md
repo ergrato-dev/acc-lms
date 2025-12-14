@@ -88,13 +88,15 @@ CREATE TABLE sessions (
 
 #### Aplicación Layer
 
-```python
-# FastAPI - No generar UUID en app
-# Dejar que PostgreSQL lo maneje
+```rust
+// Rust/Actix-web - No generar UUID en app
+// Dejar que PostgreSQL lo maneje
 
-class User(BaseModel):
-    user_id: UUID  # Auto-generado por DB
-    email: str
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct User {
+    pub user_id: Uuid,  // Auto-generado por DB
+    pub email: String,
+}
 ```
 
 #### API Responses

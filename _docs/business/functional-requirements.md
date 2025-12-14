@@ -266,7 +266,7 @@ interface ApiError {
 ```typescript
 interface RegisterRequest {
   email: string; // Valid email format, max 255 chars
-  password: string; // Min 8 chars, 1 upper, 1 lower, 1 digit
+  password: string; // Min 10 chars, 1 upper, 1 lower, 1 digit, 1 symbol (!@#$%^&*)
   firstName: string; // Min 2, max 50 chars
   lastName: string; // Min 2, max 50 chars
   acceptTerms: boolean; // Must be true
@@ -779,15 +779,17 @@ Anexos (referencias)
 
 ### Cobertura funcional por stack tecnológico
 
-| Funcionalidad     | FastAPI (Python) | Express (Node.js) | Spring Boot (Java) | Gin (Golang)   |
-| ----------------- | ---------------- | ----------------- | ------------------ | -------------- |
-| Auth service      | ✅ Implementar   | -                 | -                  | -              |
-| Users service     | ✅ Implementar   | -                 | -                  | -              |
-| Courses service   | ✅ Implementar   | -                 | -                  | -              |
-| Payments service  | -                | ✅ Implementar    | -                  | -              |
-| AI service        | ✅ Implementar   | -                 | -                  | -              |
-| Content service   | -                | -                 | -                  | ✅ Implementar |
-| Analytics service | -                | -                 | ✅ Implementar     | -              |
+| Servicio              | Framework      | Puerto | Estado         |
+| --------------------- | -------------- | ------ | -------------- |
+| auth-service          | Rust/Actix-web | 8080   | ✅ Implementar |
+| users-service         | Rust/Actix-web | 8080   | ✅ Implementar |
+| courses-service       | Rust/Axum      | 8080   | ✅ Implementar |
+| content-service       | Rust/Actix-web | 8080   | ✅ Implementar |
+| enrollments-service   | Rust/Actix-web | 8080   | ✅ Implementar |
+| payments-service      | Rust/Actix-web | 8080   | ✅ Implementar |
+| analytics-service     | Rust/Axum      | 8080   | ✅ Implementar |
+| ai-service            | Rust/Actix-web | 8080   | ✅ Implementar |
+| notifications-service | Rust/Actix-web | 8080   | ✅ Implementar |
 
 ### Criterios de definición de terminado (DoD)
 

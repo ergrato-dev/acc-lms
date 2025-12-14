@@ -1,5 +1,5 @@
 ¡Brutal elección! 🧠🔥
-Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con microservicios, comparando stacks (FastAPI, Golang, Express/Next, Spring Boot Java/Kotlin) y un **frontend único (React 19 + Vite + Tailwind)**. Abajo va el **blueprint ejecutable** para arrancar en serio.
+Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con microservicios en **Rust (Actix-web/Axum)** y un **frontend único (React 19 + Vite + Tailwind)**. Abajo va el **blueprint ejecutable** para arrancar en serio.
 
 ---
 
@@ -34,12 +34,23 @@ Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con micros
 
 ---
 
-# 3) Stacks por servicio (multi‑stack, misma nomenclatura inglesa)
+# 3) Stack tecnológico (Rust monolítico por servicio)
 
-- FastAPI (Python) + SQLAlchemy + Alembic (PostgreSQL), Redis (cache).
-- Golang (Gin/Fiber) + GORM/pgx, Redis.
-- Node (Express/Next API) + Prisma/TypeORM, Redis.
-- Spring Boot (Java/Kotlin) + JPA/Hibernate, Flyway, Redis.
+**Backend:** Rust (Actix-web / Axum) + SQLx + PostgreSQL + Redis (cache)
+
+| Servicio              | Framework | DB Principal          | Cache |
+| --------------------- | --------- | --------------------- | ----- |
+| auth-service          | Actix-web | PostgreSQL            | Redis |
+| users-service         | Actix-web | PostgreSQL            | Redis |
+| courses-service       | Axum      | PostgreSQL            | Redis |
+| content-service       | Actix-web | PostgreSQL + MinIO    | Redis |
+| enrollments-service   | Actix-web | PostgreSQL            | Redis |
+| assignments-service   | Actix-web | PostgreSQL            | Redis |
+| grades-service        | Actix-web | PostgreSQL            | Redis |
+| payments-service      | Actix-web | PostgreSQL            | Redis |
+| notifications-service | Actix-web | MongoDB               | Redis |
+| analytics-service     | Axum      | ClickHouse            | Redis |
+| ai-service            | Actix-web | PostgreSQL (pgvector) | Redis |
 
 **Convenciones (todas en inglés):**
 
@@ -446,13 +457,13 @@ volumes:
 
 **Sprint 0 (Infra + esqueleto):**
 
-- Monorepo, docker-compose base, Nginx, SonarQube, MinIO, Redis.
-- `auth-service` + `users-service` (FastAPI).
+- Monorepo, docker-compose base, Traefik, SonarQube, MinIO, Redis.
+- `auth-service` + `users-service` (Rust/Actix-web).
 - Frontend scaffold + login/registro.
 
 **Sprint 1 (Catálogo y pagos):**
 
-- `courses-service` (FastAPI), `payments-service` (Node o Kotlin).
+- `courses-service` (Rust/Axum), `payments-service` (Rust/Actix-web).
 - Checkout sandbox + webhooks + `enrollments-service`.
 
 **Sprint 2 (Contenido y aprendizaje):**
@@ -470,17 +481,17 @@ volumes:
 
 Puedo generarte **el primer microservicio completo** (siguiendo tus reglas) para arrancar de inmediato:
 
-**Opción A (recomendada):** `users-service` en **FastAPI** con:
+**Opción A (recomendada):** `auth-service` en **Rust/Actix-web** con:
 
 - Clean Architecture (árbol completo),
-- Alembic (`migrations/` con `20250808-Create-users-table.sql`),
-- Endpoints `/api/v1/users`,
-- Dockerfile, compose parcial, Nginx upstream,
-- Linters (black, ruff), tests (`unit`, `integration`),
+- SQLx migrations,
+- Endpoints `/api/v1/auth`,
+- Dockerfile, compose parcial, Traefik labels,
+- Linters (clippy, rustfmt), tests (`unit`, `integration`),
 - `sonar-project.properties`,
-- Observabilidad básica (logs + métricas).
+- Observabilidad básica (tracing + prometheus metrics).
 
-**Opción B:** `auth-service` (registro/login/refresh) con Argon2, JWT/PASETO y tests.
+**Opción B:** `users-service` (perfil, preferencias) con CRUD completo y tests.
 
 Exacto 🚀, un **LMS moderno como ACC** sin IA quedaría incompleto.
 Hoy la inteligencia artificial no es solo un “plus”, sino un **diferenciador de mercado** en plataformas educativas.

@@ -48,7 +48,7 @@ Criterios de Aceptación:
 - **Cuando** envío el formulario
 - **Entonces** veo mensaje "Email ya registrado" sin revelar información de la cuenta existente
 
-- **Dado** que ingreso una contraseña débil (menos de 8 caracteres, sin mayúsculas/números)
+- **Dado** que ingreso una contraseña débil (menos de 10 caracteres, sin mayúscula/minúscula/número/símbolo)
 - **Cuando** envío el formulario
 - **Entonces** veo indicador visual de fortaleza y sugerencias específicas para mejorarla
 

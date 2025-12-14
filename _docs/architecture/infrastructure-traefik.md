@@ -36,18 +36,18 @@ Revisar mensualmente con [Scorecard de Separación](_docs/monorepo-separation-sc
 ```mermaid
 graph TB
     Client[Client Apps] --> Traefik[Traefik Gateway]
-    Traefik --> Auth[auth-service:8000]
-    Traefik --> Users[users-service:8001]
-    Traefik --> Courses[courses-service:8002]
-    Traefik --> AI[ai-service:8003]
-    Traefik --> Analytics[analytics-service:8004]
-    Traefik --> Content[content-service:8005]
-    Traefik --> Enrollments[enrollments-service:8006]
-    Traefik --> Grades[grades-service:8007]
-    Traefik --> Assignments[assignments-service:8008]
-    Traefik --> Payments[payments-service:8009]
-    Traefik --> Notifications[notifications-service:8010]
-    Traefik --> Search[search-service:8011]
+    Traefik --> Auth[auth-service:8080]
+    Traefik --> Users[users-service:8080]
+    Traefik --> Courses[courses-service:8080]
+    Traefik --> AI[ai-service:8080]
+    Traefik --> Analytics[analytics-service:8080]
+    Traefik --> Content[content-service:8080]
+    Traefik --> Enrollments[enrollments-service:8080]
+    Traefik --> Grades[grades-service:8080]
+    Traefik --> Assignments[assignments-service:8080]
+    Traefik --> Payments[payments-service:8080]
+    Traefik --> Notifications[notifications-service:8080]
+    Traefik --> Search[search-service:8080]
     Traefik --> BI[business-intelligence-service:8012]
 ```
 
@@ -79,13 +79,13 @@ services:
     networks:
       - acc-lms-network
 
-  # FastAPI Services
+  # Rust Services (Actix-web)
   auth-service:
-    build: ./be/fastapi/auth-service
+    build: ./be/auth-service
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`)'
-      - 'traefik.http.services.auth.loadbalancer.server.port=8000'
+      - 'traefik.http.services.auth.loadbalancer.server.port=8080'
       - 'traefik.http.routers.auth.middlewares=cors,rate-limit'
     environment:
       - DATABASE_URL=postgresql://user:pass@postgres:5432/acc_lms
@@ -94,19 +94,8 @@ services:
     networks:
       - acc-lms-network
 
-  ai-service:
-    build: ./be/fastapi/ai-service
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.ai.rule=PathPrefix(`/api/v1/ai`)'
-      - 'traefik.http.services.ai.loadbalancer.server.port=8000'
-      - 'traefik.http.routers.ai.middlewares=auth,cors,rate-limit'
-    networks:
-      - acc-lms-network
-
-  # Go Services
   users-service:
-    build: ./be/go/users-service
+    build: ./be/users-service
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.users.rule=PathPrefix(`/api/v1/users`)'
@@ -115,8 +104,29 @@ services:
     networks:
       - acc-lms-network
 
+  ai-service:
+    build: ./be/ai-service
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.ai.rule=PathPrefix(`/api/v1/ai`)'
+      - 'traefik.http.services.ai.loadbalancer.server.port=8080'
+      - 'traefik.http.routers.ai.middlewares=auth,cors,rate-limit'
+    networks:
+      - acc-lms-network
+
+  # Rust Services (Axum)
+  courses-service:
+    build: ./be/courses-service
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.courses.rule=PathPrefix(`/api/v1/courses`)'
+      - 'traefik.http.services.courses.loadbalancer.server.port=8080'
+      - 'traefik.http.routers.courses.middlewares=cors'
+    networks:
+      - acc-lms-network
+
   analytics-service:
-    build: ./be/go/analytics-service
+    build: ./be/analytics-service
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.analytics.rule=PathPrefix(`/api/v1/analytics`)'
@@ -125,20 +135,8 @@ services:
     networks:
       - acc-lms-network
 
-  # Express Services
-  courses-service:
-    build: ./be/express/courses-service
-    labels:
-      - 'traefik.enable=true'
-      - 'traefik.http.routers.courses.rule=PathPrefix(`/api/v1/courses`)'
-      - 'traefik.http.services.courses.loadbalancer.server.port=3000'
-      - 'traefik.http.routers.courses.middlewares=cors'
-    networks:
-      - acc-lms-network
-
-  # Spring Boot Services
   payments-service:
-    build: ./be/sb-java/payments-service
+    build: ./be/payments-service
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.payments.rule=PathPrefix(`/api/v1/payments`)'
@@ -170,8 +168,8 @@ labels:
   - 'traefik.http.middlewares.rate-limit-strict.ratelimit.burst=10'
   - 'traefik.http.middlewares.rate-limit-strict.ratelimit.average=5'
 
-  # Autenticación JWT
-  - 'traefik.http.middlewares.auth.forwardauth.address=http://auth-service:8000/api/v1/auth/validate'
+  # Autenticación JWT (Rust auth-service en puerto 8080)
+  - 'traefik.http.middlewares.auth.forwardauth.address=http://auth-service:8080/api/v1/auth/validate'
   - 'traefik.http.middlewares.auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Role,X-User-Email'
 
   # Circuit breaker
@@ -209,10 +207,10 @@ services:
       file: docker-compose.yml
       service: auth-service
     volumes:
-      - ./be/fastapi/auth-service:/app
+      - ./be/auth-service:/app
     environment:
-      - DEBUG=true
-      - RELOAD=true
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
 ```
 
 ### Producción
@@ -289,9 +287,9 @@ labels:
 ### Health Checks
 
 ```yaml
-# Health checks para cada servicio
+# Health checks para cada servicio (Rust services en puerto 8080)
 healthcheck:
-  test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+  test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
   interval: 30s
   timeout: 10s
   retries: 3

@@ -1,0 +1,150 @@
+# =============================================================================
+# ACC LMS - Traefik Dynamic Configuration (Middlewares)
+# =============================================================================
+
+http:
+  # ---------------------------------------------------------------------------
+  # Middlewares
+  # ---------------------------------------------------------------------------
+  middlewares:
+    # Security Headers
+    security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 31536000
+        customFrameOptionsValue: SAMEORIGIN
+        customResponseHeaders:
+          X-Request-ID: '{{.RequestID}}'
+          X-Powered-By: ''
+          Server: ''
+
+    # Rate Limiting (Global)
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1s
+
+    # Rate Limiting (Auth - Stricter)
+    rate-limit-auth:
+      rateLimit:
+        average: 5
+        burst: 10
+        period: 1m
+
+    # Circuit Breaker
+    circuit-breaker:
+      circuitBreaker:
+        expression: 'ResponseCodeRatio(500, 600, 0, 600) > 0.30 || NetworkErrorRatio() > 0.10'
+        checkPeriod: 10s
+        fallbackDuration: 30s
+        recoveryDuration: 60s
+
+    # Retry (for transient failures)
+    retry:
+      retry:
+        attempts: 3
+        initialInterval: 100ms
+
+    # CORS
+    cors:
+      headers:
+        accessControlAllowCredentials: true
+        accessControlAllowHeaders:
+          - Authorization
+          - Content-Type
+          - X-Request-ID
+          - X-Requested-With
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+          - OPTIONS
+        accessControlAllowOriginList:
+          - https://acc-lms.com
+          - https://www.acc-lms.com
+        accessControlMaxAge: 86400
+
+    # Compress
+    compress:
+      compress:
+        excludedContentTypes:
+          - text/event-stream
+
+    # Strip API prefix (if needed)
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - /api
+
+    # Add Request ID
+    request-id:
+      headers:
+        customRequestHeaders:
+          X-Request-ID: '{{uuid}}'
+
+  # ---------------------------------------------------------------------------
+  # Services Health Checks
+  # ---------------------------------------------------------------------------
+  services:
+    auth-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    users-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    courses-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    enrollments-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    payments-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    notifications-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []
+
+    analytics-service:
+      loadBalancer:
+        healthCheck:
+          path: /health
+          interval: 10s
+          timeout: 5s
+        servers: []

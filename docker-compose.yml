@@ -1,0 +1,434 @@
+# ACC LMS - Docker Compose (Development)
+# Versión: 1.0.0
+# Stack: React 19+ | Rust (stable) | PostgreSQL 17+ | Redis (stable) | Nginx (stable)
+
+services:
+  # =============================================================================
+  # FRONTEND - React 19 + Vite
+  # =============================================================================
+  frontend:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+      target: development
+    container_name: acc-lms-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./fe:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - api-gateway
+    networks:
+      - acc-frontend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # API GATEWAY - Traefik
+  # =============================================================================
+  api-gateway:
+    image: traefik:v3.2
+    container_name: acc-lms-traefik
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=acc-backend"
+      - "--entrypoints.web.address=:8080"
+      - "--entrypoints.websecure.address=:8443"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "8080:8080" # API Gateway
+      - "8443:8443" # HTTPS
+      - "8081:8080" # Traefik Dashboard (dev only)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/traefik:/etc/traefik
+    networks:
+      - acc-frontend
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # MICROSERVICES - Rust (Actix-web / Axum)
+  # =============================================================================
+
+  # Auth Service
+  svc-auth:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: auth
+    container_name: acc-lms-auth
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/v1/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Users Service
+  svc-users:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: users
+    container_name: acc-lms-users
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.users.rule=PathPrefix(`/api/v1/users`)"
+      - "traefik.http.routers.users.entrypoints=web"
+      - "traefik.http.services.users.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Courses Service
+  svc-courses:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: courses
+    container_name: acc-lms-courses
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.courses.rule=PathPrefix(`/api/v1/courses`)"
+      - "traefik.http.routers.courses.entrypoints=web"
+      - "traefik.http.services.courses.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Enrollments Service
+  svc-enrollments:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: enrollments
+    container_name: acc-lms-enrollments
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.enrollments.rule=PathPrefix(`/api/v1/enrollments`)"
+      - "traefik.http.routers.enrollments.entrypoints=web"
+      - "traefik.http.services.enrollments.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Payments Service
+  svc-payments:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: payments
+    container_name: acc-lms-payments
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-sk_test_xxx}
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.payments.rule=PathPrefix(`/api/v1/payments`)"
+      - "traefik.http.routers.payments.entrypoints=web"
+      - "traefik.http.services.payments.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Notifications Service
+  svc-notifications:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: notifications
+    container_name: acc-lms-notifications
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017/acc_notifications
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notifications.rule=PathPrefix(`/api/v1/notifications`)"
+      - "traefik.http.routers.notifications.entrypoints=web"
+      - "traefik.http.services.notifications.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Analytics Service
+  svc-analytics:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+      target: development
+      args:
+        SERVICE_NAME: analytics
+    container_name: acc-lms-analytics
+    environment:
+      - RUST_LOG=debug
+      - DATABASE_URL=postgres://acc:acc_secret@postgres:5432/acc_lms
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - SERVICE_PORT=8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analytics.rule=PathPrefix(`/api/v1/analytics`)"
+      - "traefik.http.routers.analytics.entrypoints=web"
+      - "traefik.http.services.analytics.loadbalancer.server.port=8080"
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # =============================================================================
+  # DATABASES
+  # =============================================================================
+
+  # PostgreSQL 17+ (Primary)
+  postgres:
+    image: postgres:17-alpine
+    container_name: acc-lms-postgres
+    environment:
+      POSTGRES_USER: acc
+      POSTGRES_PASSWORD: acc_secret
+      POSTGRES_DB: acc_lms
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations/postgresql:/docker-entrypoint-initdb.d:ro
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acc -d acc_lms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis (Latest Stable)
+  redis:
+    image: redis:alpine
+    container_name: acc-lms-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB (Notifications/Real-time)
+  mongodb:
+    image: mongo:7
+    container_name: acc-lms-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: acc
+      MONGO_INITDB_ROOT_PASSWORD: acc_secret
+      MONGO_INITDB_DATABASE: acc_notifications
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./db/migrations/mongodb:/docker-entrypoint-initdb.d:ro
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ClickHouse (Analytics)
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: acc-lms-clickhouse
+    environment:
+      CLICKHOUSE_USER: acc
+      CLICKHOUSE_PASSWORD: acc_secret
+      CLICKHOUSE_DB: acc_analytics
+    ports:
+      - "8123:8123" # HTTP
+      - "9000:9000" # Native
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./db/migrations/clickhouse:/docker-entrypoint-initdb.d:ro
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # MinIO (Object Storage - S3 Compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: acc-lms-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: acc_minio
+      MINIO_ROOT_PASSWORD: acc_minio_secret
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Console
+    volumes:
+      - minio_data:/data
+    networks:
+      - acc-backend
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  acc-frontend:
+    driver: bridge
+  acc-backend:
+    driver: bridge
+    internal: false # Allow external access in dev
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+  redis_data:
+  mongodb_data:
+  clickhouse_data:
+  minio_data:
