@@ -1,0 +1,39 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    ACC LMS - Logo
+    Theme: Dark
+    Gradients: NONE (solid colors only)
+    Fonts: Sans-serif (Inter, Arial, system-ui)
+  -->
+  
+  <!-- Dark Background Circle -->
+  <circle cx="100" cy="100" r="95" fill="#1a1a1a"/>
+  <circle cx="100" cy="100" r="90" stroke="#23a500" stroke-width="4"/>
+  <circle cx="100" cy="100" r="90" stroke="#ff7e05" stroke-width="2" stroke-dasharray="8 12"/>
+  
+  <!-- Graduation Cap -->
+  <g transform="translate(100, 85)">
+    <!-- Cap base -->
+    <path d="M0 -15L-45 -32L0 -50L45 -32L0 -15Z" fill="#23a500"/>
+    <!-- Cap sides -->
+    <path d="M-45 -32V0C-45 8 -28 16 0 16C28 16 45 8 45 0V-32" 
+          fill="#23a500" opacity="0.8"/>
+    <!-- Tassel -->
+    <circle cx="50" cy="-22" r="4" fill="#ff7e05"/>
+    <line x1="50" y1="-18" x2="50" y2="-2" stroke="#ff7e05" stroke-width="2.5"/>
+  </g>
+  
+  <!-- Code Brackets -->
+  <g transform="translate(100, 130)">
+    <path d="M-28 -12L-40 0L-28 12" stroke="#ffffff" stroke-width="4" 
+          fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M28 -12L40 0L28 12" stroke="#ffffff" stroke-width="4" 
+          fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="175" font-family="Inter, Arial, sans-serif" font-size="18" 
+        font-weight="bold" text-anchor="middle" fill="#ffffff">
+    ACC
+  </text>
+</svg>
