@@ -1,9 +1,13 @@
 # 🎓 ACC LMS — Aprender Con Criterio
 
+<p align="center">
+  <img src="_assets/banners/github-banner.svg" alt="ACC LMS Banner" width="100%">
+</p>
+
 **LMS Open Source con IA y Business Intelligence**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Contributors](https://img.shields.io/github/contributors/yourusername/acc-lms)](https://github.com/yourusername/acc-lms/graphs/contributors)
+[![Contributors](https://img.shields.io/github/contributors/ergrato-dev/acc-lms)](https://github.com/ergrato-dev/acc-lms/graphs/contributors)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 ---
