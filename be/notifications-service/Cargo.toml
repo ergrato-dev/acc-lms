@@ -1,0 +1,16 @@
+[package]
+name = "notifications-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "notifications"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+actix-web.workspace = true
+tokio.workspace = true
+serde.workspace = true
+tracing.workspace = true

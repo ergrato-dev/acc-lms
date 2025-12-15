@@ -202,6 +202,25 @@ temp/
 _docs/_generated/
 docs/api/
 
+# ================== CONFIDENTIAL / PROPRIETARY ==================
+# Implementation details that must remain private
+_docs/confidential/*
+!_docs/confidential/README.md
+_docs/proprietary/
+
+# Video protection / DRM implementations
+**/drm/
+**/video-protection/
+**/proprietary/
+**/*_proprietary.rs
+**/*_secret.rs
+**/anti-piracy/
+**/security-impl/
+
+# License and key management
+**/license-keys/
+**/key-management/
+
 # ================== Misc ==================
 # Debug
 debug/

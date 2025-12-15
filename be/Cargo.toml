@@ -1,0 +1,98 @@
+# =============================================================================
+# ACC LMS - Backend Workspace (Rust)
+# =============================================================================
+# Monorepo workspace con microservicios en Clean Architecture
+# =============================================================================
+
+[workspace]
+resolver = "2"
+members = [
+    "shared",
+    "auth-service",
+    "users-service",
+    "courses-service",
+    "enrollments-service",
+    "payments-service",
+    "notifications-service",
+    "analytics-service",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["ACC LMS Team"]
+license = "MIT"
+repository = "https://github.com/ergrato-dev/acc-lms"
+
+[workspace.dependencies]
+# Web frameworks
+actix-web = "4"
+actix-rt = "2"
+actix-cors = "0.7"
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "migrate",
+] }
+
+# Authentication & Security
+jsonwebtoken = "9"
+argon2 = "0.5"
+rand = "0.8"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Tracing & Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7"
+
+# Types
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Config
+config = "0.14"
+dotenvy = "0.15"
+
+# Redis
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# Testing
+mockall = "0.13"
+fake = { version = "2.10", features = ["derive", "uuid", "chrono"] }
+wiremock = "0.6"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
