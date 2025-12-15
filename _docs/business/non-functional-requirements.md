@@ -488,9 +488,554 @@ export const options = {
 
 ---
 
+## RNF-013: Cumplimiento Legal y Protección de Datos
+
+**Referencia completa:** [compliance-requirements.md](./compliance-requirements.md)
+
+### Normativas soportadas
+
+| Jurisdicción     | Normativa                   | Alcance                        |
+| ---------------- | --------------------------- | ------------------------------ |
+| 🇨🇴 Colombia      | Ley 1581/2012 (Habeas Data) | Todos los usuarios colombianos |
+| 🇪🇺 Unión Europea | GDPR (2016/679)             | Residentes UE/EEE              |
+| 🇺🇸 California    | CCPA/CPRA                   | Residentes California          |
+| 🇧🇷 Brasil        | LGPD (Lei 13.709)           | Residentes Brasil              |
+| 🌍 Global        | COPPA                       | Menores de edad                |
+
+### Implementación técnica
+
+```typescript
+// Encriptación datos sensibles
+interface DataProtection {
+  // At rest
+  encryption: {
+    algorithm: 'AES-256-GCM';
+    keyManagement: 'AWS KMS' | 'HashiCorp Vault';
+    encryptedFields: [
+      'email',
+      'phone',
+      'address',
+      'document_id',
+      'payment_tokens'
+    ];
+  };
+
+  // Passwords
+  hashing: {
+    algorithm: 'Argon2id';
+    memory: 65536; // 64 MB
+    iterations: 3;
+    parallelism: 4;
+  };
+
+  // Tokenización pagos
+  paymentData: {
+    provider: 'Stripe';
+    storedLocally: false;
+    pciCompliant: true;
+  };
+}
+```
+
+### Retención de datos
+
+| Tipo de dato                    | Retención                        | Base legal              |
+| ------------------------------- | -------------------------------- | ----------------------- |
+| Cuenta usuario                  | Mientras activa + 30 días gracia | Contrato                |
+| Datos fiscales/facturas         | 10 años                          | Ley tributaria Colombia |
+| Transacciones comerciales       | 5 años mínimo                    | Código de comercio      |
+| Logs de seguridad               | 6 meses - 2 años                 | Interés legítimo        |
+| Logs auditoría datos personales | 2 años                           | Accountability GDPR     |
+| Cookies analytics               | 24 meses máximo                  | ePrivacy                |
+| Datos marketing (sin actividad) | 2 años                           | Consentimiento          |
+
+### Medidas de seguridad organizativas
+
+- **DPO (Data Protection Officer):** Designado y registrado
+- **Capacitación:** Anual obligatoria para empleados con acceso a datos
+- **NDAs:** Obligatorios para empleados y contractors
+- **Acceso mínimo:** Principio de menor privilegio implementado
+- **Evaluaciones de impacto (DPIA):** Para tratamientos de alto riesgo
+- **Registro de actividades:** Mantenido según GDPR Art. 30
+
+### Plazos de respuesta legal
+
+| Solicitud           | GDPR     | Habeas Data     | CCPA           | LGPD      |
+| ------------------- | -------- | --------------- | -------------- | --------- |
+| Respuesta estándar  | 30 días  | 15 días hábiles | 45 días        | 15 días   |
+| Extensión máxima    | +60 días | +8 días         | +45 días       | Razonable |
+| Notificación brecha | 72 horas | ASAP            | Pronto posible | Razonable |
+
+### Transferencias internacionales
+
+```yaml
+# Proveedores con DPA firmado
+processors:
+  - name: AWS
+    location: US (us-east-1)
+    mechanism: Standard Contractual Clauses (SCCs)
+    dpa_signed: true
+
+  - name: Stripe
+    location: US
+    mechanism: SCCs
+    dpa_signed: true
+    pci_compliant: true
+
+  - name: SendGrid
+    location: US
+    mechanism: SCCs
+    dpa_signed: true
+
+  - name: Cloudflare
+    location: Global
+    mechanism: SCCs
+    dpa_signed: true
+```
+
+---
+
+## RNF-014: Accesibilidad Web (WCAG 2.1 AA)
+
+### Estándar objetivo
+
+- **Nivel de conformidad:** WCAG 2.1 Nivel AA
+- **Plazo cumplimiento:** MVP debe cumplir AA en flujos críticos
+- **Auditoría:** Antes de lanzamiento público
+
+### Principios POUR
+
+#### 1. Perceptible
+
+```css
+/* Contraste mínimo 4.5:1 para texto normal, 3:1 para texto grande */
+:root {
+  --text-primary: #1a1a1a; /* Sobre blanco: 16.1:1 */
+  --text-secondary: #4a4a4a; /* Sobre blanco: 9.0:1 */
+  --text-on-primary: #ffffff; /* Sobre primary: verificar */
+  --background: #ffffff;
+}
+
+/* Tamaño mínimo de texto */
+body {
+  font-size: 16px; /* Nunca menor a 16px */
+  line-height: 1.5; /* Interlineado adecuado */
+}
+
+/* No usar solo color para transmitir información */
+.error {
+  color: var(--error-red);
+  border-left: 4px solid var(--error-red); /* Indicador adicional */
+}
+.error::before {
+  content: '⚠ '; /* Icono adicional */
+}
+```
+
+```html
+<!-- Textos alternativos obligatorios -->
+<img
+  src="course-thumbnail.jpg"
+  alt="Miniatura del curso: Introducción a React" />
+
+<!-- Para imágenes decorativas -->
+<img
+  src="decoration.svg"
+  alt=""
+  role="presentation" />
+
+<!-- Subtítulos en videos -->
+<video>
+  <source
+    src="lesson.mp4"
+    type="video/mp4" />
+  <track
+    kind="captions"
+    src="lesson-es.vtt"
+    srclang="es"
+    label="Español" />
+  <track
+    kind="captions"
+    src="lesson-en.vtt"
+    srclang="en"
+    label="English" />
+</video>
+```
+
+#### 2. Operable
+
+```typescript
+// Navegación por teclado completa
+interface KeyboardAccessibility {
+  // Todos los interactivos alcanzables con Tab
+  tabIndex: number;
+
+  // Atajos de teclado documentados
+  shortcuts: {
+    Escape: 'Cerrar modal/dropdown';
+    'Enter/Space': 'Activar botón/link';
+    'Arrow keys': 'Navegar menús/listas';
+    'Ctrl+K': 'Abrir búsqueda global';
+  };
+
+  // Focus visible obligatorio
+  focusIndicator: {
+    outline: '2px solid var(--primary)';
+    outlineOffset: '2px';
+  };
+}
+
+// Skip links para navegación rápida
+<a
+  href="#main-content"
+  class="skip-link">
+  Saltar al contenido principal
+</a>;
+```
+
+```css
+/* Focus visible - NUNCA ocultar */
+*:focus {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Solo ocultar outline si hay focus-visible */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
+}
+
+/* Touch targets mínimo 44x44px */
+button,
+a,
+input[type='checkbox'],
+input[type='radio'] {
+  min-height: 44px;
+  min-width: 44px;
+}
+```
+
+#### 3. Comprensible
+
+```typescript
+// Idioma de página declarado
+<html lang="es">
+
+// Idioma de fragmentos específicos
+<p>El término <span lang="en">responsive design</span> significa...</p>
+
+// Mensajes de error claros y específicos
+interface FormError {
+  field: string;
+  message: string;          // Mensaje legible, no código
+  suggestion?: string;      // Cómo corregir
+}
+
+// Ejemplo
+{
+  field: "email",
+  message: "El correo electrónico no tiene un formato válido",
+  suggestion: "Asegúrate de incluir @ y un dominio (ej: usuario@ejemplo.com)"
+}
+```
+
+```html
+<!-- Labels asociados a inputs -->
+<label for="email">Correo electrónico</label>
+<input
+  type="email"
+  id="email"
+  name="email"
+  aria-describedby="email-hint email-error" />
+<span
+  id="email-hint"
+  class="hint"
+  >Usaremos este email para notificaciones</span
+>
+<span
+  id="email-error"
+  class="error"
+  role="alert"
+  aria-live="polite"></span>
+
+<!-- Campos obligatorios indicados claramente -->
+<label for="name">
+  Nombre
+  <span
+    aria-label="requerido"
+    class="required"
+    >*</span
+  >
+</label>
+```
+
+#### 4. Robusto
+
+```html
+<!-- HTML semántico -->
+<header role="banner">
+  <nav
+    role="navigation"
+    aria-label="Principal">
+    ...
+  </nav>
+</header>
+
+<main
+  role="main"
+  id="main-content">
+  <article>
+    <h1>Título del curso</h1>
+    <section aria-labelledby="section-overview">
+      <h2 id="section-overview">Descripción general</h2>
+      ...
+    </section>
+  </article>
+</main>
+
+<aside
+  role="complementary"
+  aria-label="Cursos relacionados">
+  ...
+</aside>
+
+<footer role="contentinfo">...</footer>
+
+<!-- ARIA solo cuando HTML nativo no es suficiente -->
+<div
+  role="tablist"
+  aria-label="Secciones del curso">
+  <button
+    role="tab"
+    aria-selected="true"
+    aria-controls="panel-1">
+    Contenido
+  </button>
+  <button
+    role="tab"
+    aria-selected="false"
+    aria-controls="panel-2">
+    Recursos
+  </button>
+</div>
+<div
+  role="tabpanel"
+  id="panel-1"
+  aria-labelledby="tab-1">
+  ...
+</div>
+```
+
+### Componentes específicos a auditar
+
+| Componente          | Requisitos                                              |
+| ------------------- | ------------------------------------------------------- |
+| **Video player**    | Controles por teclado, subtítulos, descripción audio    |
+| **Formularios**     | Labels asociados, errores en aria-live, grupos fieldset |
+| **Modales**         | Focus trap, Escape cierra, aria-modal                   |
+| **Navegación**      | Skip links, aria-current, breadcrumbs                   |
+| **Carruseles**      | Pause, controles visibles, anuncio cambio               |
+| **Tablas de datos** | Headers th, scope, caption                              |
+| **Alertas**         | role="alert", aria-live="polite/assertive"              |
+| **Loading states**  | aria-busy, mensajes de progreso                         |
+
+### Testing de accesibilidad
+
+```yaml
+# Herramientas obligatorias en CI/CD
+tools:
+  automated:
+    - axe-core # Integrado en tests E2E
+    - lighthouse # Auditoría Performance + A11y
+    - pa11y # CLI para CI
+
+  manual:
+    - NVDA / VoiceOver # Screen readers
+    - Keyboard-only testing # Navegación sin mouse
+    - Color blindness sim # Simuladores daltonismo
+
+# Criterio de aceptación
+thresholds:
+  axe_violations: 0 # Cero violaciones críticas
+  lighthouse_a11y: 90 # Score mínimo 90/100
+```
+
+```javascript
+// Test E2E con axe-core
+describe('Accessibility', () => {
+  it('should have no accessibility violations on homepage', async () => {
+    await page.goto('/');
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations).toHaveLength(0);
+  });
+
+  it('should be navigable by keyboard', async () => {
+    await page.goto('/login');
+    await page.keyboard.press('Tab');
+    const focused = await page.evaluate(() => document.activeElement.id);
+    expect(focused).toBe('email');
+  });
+});
+```
+
+### Declaración de accesibilidad
+
+- **Ubicación:** `/accesibilidad`
+- **Contenido:** Estado de conformidad, limitaciones conocidas, contacto
+- **Actualización:** Cada release mayor
+
+---
+
+## RNF-015: Internacionalización y Localización (i18n/L10n)
+
+### Idiomas soportados
+
+| Idioma    | Código | Estado         | Cobertura |
+| --------- | ------ | -------------- | --------- |
+| Español   | es     | ✅ Principal   | 100%      |
+| English   | en     | ✅ Secundario  | 100%      |
+| Português | pt     | 🟡 Planificado | 80%       |
+
+### Arquitectura i18n
+
+```typescript
+// Frontend - React i18next
+interface I18nConfig {
+  fallbackLng: 'es';
+  supportedLngs: ['es', 'en', 'pt'];
+
+  // Lazy loading de traducciones
+  backend: {
+    loadPath: '/locales/{{lng}}/{{ns}}.json';
+  };
+
+  // Namespaces por feature
+  ns: ['common', 'auth', 'courses', 'checkout', 'errors'];
+
+  // Detección automática
+  detection: {
+    order: ['querystring', 'cookie', 'localStorage', 'navigator'];
+  };
+}
+
+// Estructura de archivos
+/locales
+  /es
+    common.json
+    auth.json
+    courses.json
+  /en
+    common.json
+    auth.json
+    courses.json
+```
+
+```json
+// /locales/es/auth.json
+{
+  "login": {
+    "title": "Iniciar sesión",
+    "email_label": "Correo electrónico",
+    "password_label": "Contraseña",
+    "submit": "Entrar",
+    "forgot_password": "¿Olvidaste tu contraseña?",
+    "no_account": "¿No tienes cuenta? {{link}}",
+    "register_link": "Regístrate"
+  },
+  "errors": {
+    "invalid_credentials": "Correo o contraseña incorrectos",
+    "account_locked": "Cuenta bloqueada temporalmente. Intenta en {{minutes}} minutos.",
+    "email_not_verified": "Por favor verifica tu correo electrónico"
+  }
+}
+```
+
+### Backend - Códigos de error
+
+```rust
+// Backend NO envía textos de UI, solo códigos
+#[derive(Serialize)]
+pub struct ApiError {
+    pub code: ErrorCode,      // "INVALID_CREDENTIALS"
+    pub message: String,      // Mensaje técnico (inglés)
+    pub details: Option<Value>,
+}
+
+// Frontend traduce según código
+const errorMessages = {
+  INVALID_CREDENTIALS: t('auth.errors.invalid_credentials'),
+  ACCOUNT_LOCKED: t('auth.errors.account_locked', { minutes: data.minutes }),
+};
+```
+
+### Formatos regionales (L10n)
+
+```typescript
+// Configuración por locale
+const localeFormats = {
+  es: {
+    dateFormat: 'DD/MM/YYYY',
+    timeFormat: 'HH:mm',
+    currency: 'COP',
+    numberFormat: {
+      decimal: ',',
+      thousands: '.',
+    },
+  },
+  en: {
+    dateFormat: 'MM/DD/YYYY',
+    timeFormat: 'h:mm A',
+    currency: 'USD',
+    numberFormat: {
+      decimal: '.',
+      thousands: ',',
+    },
+  },
+};
+
+// Uso con Intl API
+const formatDate = (date: Date, locale: string) =>
+  new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+  }).format(date);
+
+const formatCurrency = (amount: number, currency: string, locale: string) =>
+  new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+  }).format(amount);
+```
+
+### Contenido multiidioma (cursos)
+
+```typescript
+// Cursos pueden tener contenido en múltiples idiomas
+interface CourseLocalization {
+  courseId: string;
+  defaultLanguage: string;
+
+  localizations: {
+    [locale: string]: {
+      title: string;
+      description: string;
+      subtitles?: string[]; // VTT files
+      transcripts?: string[]; // Transcripciones
+    };
+  };
+}
+```
+
+---
+
 **Próximos pasos:**
 
 1. Implementar health checks y métricas base
 2. Configurar CI/CD con quality gates
 3. Setup monitoring stack (Prometheus/Grafana)
 4. Definir runbooks para incidents comunes
+5. Auditoría de accesibilidad pre-lanzamiento
+6. Completar traducciones PT-BR

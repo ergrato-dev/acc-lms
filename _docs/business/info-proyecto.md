@@ -20,6 +20,8 @@ Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con micros
 
 # 2) Dominios y microservicios (bounded contexts)
 
+### Servicios Core (MVP)
+
 - **auth-service** (AuthN/AuthZ, JWT o PASETO, RBAC)
 - **users-service** (perfil, preferencias, billing profile)
 - **courses-service** (cursos, lecciones, módulos, tags, prerequisitos)
@@ -31,6 +33,17 @@ Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con micros
 - **notifications-service** (email/push/WhatsApp; plantillas)
 - **analytics-service** (KPIs: completion rate, funnel de compra, cohortes)
 - **search-service** (catálogo/FAQ usando MongoDB + text index o Elastic)
+
+### Servicios de Soporte y Compliance
+
+- **chatbot-service** (asistente conversacional 24/7, NLU, escalamiento a humano)
+- **kb-service** (knowledge base, artículos de ayuda, FAQ categorizado)
+- **compliance-service** (GDPR/CCPA/LGPD/Habeas Data, consentimientos, ARCO, portabilidad)
+- **subscription-service** (planes de suscripción, billing recurrente, lifecycle)
+
+### Servicios de IA
+
+- **ai-service** (búsqueda semántica, tutor RAG, generación quizzes, embeddings)
 
 ---
 
@@ -51,6 +64,10 @@ Hagamos **ACC — Aprender Con Criterio** como un **LMS open source** con micros
 | notifications-service | Actix-web | MongoDB               | Redis |
 | analytics-service     | Axum      | ClickHouse            | Redis |
 | ai-service            | Actix-web | PostgreSQL (pgvector) | Redis |
+| chatbot-service       | Actix-web | PostgreSQL + MongoDB  | Redis |
+| kb-service            | Actix-web | PostgreSQL            | Redis |
+| compliance-service    | Actix-web | PostgreSQL            | Redis |
+| subscription-service  | Actix-web | PostgreSQL            | Redis |
 
 **Convenciones (todas en inglés):**
 
@@ -215,14 +232,63 @@ CREATE TABLE orders (
   - `POST /api/v1/content/presign-upload`
   - `GET  /api/v1/content/:key/presign-download`
 
+- **chatbot-service**
+
+  - `POST /api/v1/chatbot/sessions` (iniciar sesión de chat)
+  - `POST /api/v1/chatbot/messages` (enviar mensaje)
+  - `GET  /api/v1/chatbot/suggestions` (sugerencias contextuales)
+  - `POST /api/v1/chatbot/escalate` (escalar a humano)
+  - `POST /api/v1/chatbot/feedback` (feedback de utilidad)
+
+- **kb-service**
+
+  - `GET  /api/v1/kb/categories` (categorías de KB)
+  - `GET  /api/v1/kb/articles` (listar artículos)
+  - `GET  /api/v1/kb/articles/:slug` (detalle de artículo)
+  - `POST /api/v1/kb/articles/:id/feedback` (votación útil/no útil)
+  - `POST /api/v1/kb/search/semantic` (búsqueda semántica)
+
+- **compliance-service**
+
+  - `GET  /api/v1/compliance/legal/:type` (términos, privacidad, cookies)
+  - `GET  /api/v1/compliance/consents` (consentimientos del usuario)
+  - `PATCH /api/v1/compliance/consents` (actualizar consentimientos)
+  - `POST /api/v1/compliance/data-requests` (solicitud ARCO/GDPR)
+  - `GET  /api/v1/compliance/data-requests/:id` (estado de solicitud)
+  - `POST /api/v1/compliance/export` (portabilidad de datos)
+  - `POST /api/v1/compliance/deletion` (derecho al olvido)
+  - `POST /api/v1/compliance/ccpa/opt-out` (opt-out venta datos)
+
+- **subscription-service**
+
+  - `GET  /api/v1/subscriptions/plans` (planes disponibles)
+  - `POST /api/v1/subscriptions/subscribe` (crear suscripción)
+  - `GET  /api/v1/subscriptions/billing` (información de facturación)
+  - `POST /api/v1/subscriptions/cancel` (cancelar suscripción)
+  - `POST /api/v1/subscriptions/pause` (pausar suscripción)
+  - `POST /api/v1/subscriptions/reactivate` (reactivar suscripción)
+
+- **ai-service**
+
+  - `GET  /api/v1/ai/semantic-search` (búsqueda semántica)
+  - `POST /api/v1/ai/tutor/sessions` (sesión de tutoría)
+  - `POST /api/v1/ai/tutor/messages` (mensaje a tutor)
+  - `POST /api/v1/ai/quizzes/generate` (generar quiz con IA)
+  - `POST /api/v1/ai/summaries` (resumen de contenido)
+
 ---
 
-# 6) Eventos (asincronía y desac acoplamiento)
+# 6) Eventos (asincronía y desacoplamiento)
 
 - `course.published` → notificar suscriptores, refrescar search index.
 - `order.paid` → crear `enrollment` y enviar recibo.
 - `quiz.submitted` → calcular `score`, emitir `grade.updated`.
 - `lesson.viewed` → analytics actualiza `progress`.
+- `consent.updated` → compliance registra cambio.
+- `subscription.created` → activar acceso premium.
+- `subscription.canceled` → notificar retención, ajustar acceso.
+- `data_request.submitted` → compliance inicia proceso.
+- `chat.escalated` → crear ticket de soporte.
 
 Formato (JSON camelCase) en un **topic** tipo `acc.events` (RabbitMQ/Redpanda/Kafka).
 
@@ -233,7 +299,7 @@ Formato (JSON camelCase) en un **topic** tipo `acc.events` (RabbitMQ/Redpanda/Ka
 ```
 /acc-platform/
   ├─ /fe/ (React 19 + Vite + Tailwind)
-  ├─ /services/
+  ├─ /be/
   │   ├─ /auth-service/
   │   ├─ /users-service/
   │   ├─ /courses-service/
@@ -241,7 +307,15 @@ Formato (JSON camelCase) en un **topic** tipo `acc.events` (RabbitMQ/Redpanda/Ka
   │   ├─ /assignments-service/
   │   ├─ /grades-service/
   │   ├─ /payments-service/
-  │   └─ /content-service/
+  │   ├─ /content-service/
+  │   ├─ /notifications-service/
+  │   ├─ /analytics-service/
+  │   ├─ /search-service/
+  │   ├─ /ai-service/
+  │   ├─ /chatbot-service/
+  │   ├─ /kb-service/
+  │   ├─ /compliance-service/
+  │   └─ /subscription-service/
   ├─ /infra/
   │   ├─ /nginx/
   │   │   └─ nginx.conf

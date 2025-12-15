@@ -870,28 +870,1933 @@ interface ContactFormResponse {
 
 ---
 
-## 19) Fuera de alcance MVP (para backlog)
+## 19) Chatbot Service y Knowledge Base
 
-- Marketplace multi-tenant, cupones/descuentos avanzados, foros/discusiones, certificaciones, app móvil nativa.
+### RF-CHATBOT-001: Widget de Chatbot Embebido
 
-## 20) Trazabilidad (mapa RF ↔ endpoints/tablas)
+**Propósito:** Proporcionar asistencia 24/7 mediante chatbot conversacional integrado en todas las páginas.
 
-- auth-service: RF-AUTH-01..04 ↔ /api/v1/auth/\*, tables users (users-service), sessions opcional.
-- users-service: RF-USERS-01..03 ↔ /api/v1/users/\*, tables users, user_preferences.
-- courses-service: RF-COURSES-01..05 ↔ /api/v1/courses/\*, tables courses, lessons.
-- enrollments-service: RF-ENR-01..04 ↔ /api/v1/enrollments/\*, tables enrollments.
-- content-service: RF-CONTENT-01..02 ↔ /api/v1/content/\*, MinIO buckets.
-- assignments-service: RF-ASSIGN-01..02 ↔ /api/v1/quizzes/\*, tables quizzes, quiz_questions.
-- grades-service: RF-GRADES-01..02 ↔ /api/v1/grades/\*, tables submissions.
-- payments-service: RF-PAY-01..03 ↔ /api/v1/orders, /api/v1/payments/webhook/\*, table orders.
-- notifications-service: RF-NOTIF-01..02 ↔ jobs/queues, event_logs.
-- analytics-service: RF-AN-01..02 ↔ /api/v1/analytics/\*, event_logs.
-- search-service: RF-SEARCH-01..02 ↔ /api/v1/search/\*, index.
-- **support (frontend + chatbot-service): RF-SUPPORT-01..02 ↔ /api/v1/contact, /support, chatbot widget.**
+**Especificación técnica:**
+
+```typescript
+// Configuración del widget
+interface ChatbotWidgetConfig {
+  position: 'bottom-right' | 'bottom-left';
+  theme: 'light' | 'dark' | 'auto';
+  autoOpen: boolean; // Auto-abrir tras X segundos
+  autoOpenDelay: number; // Segundos (default: 30)
+  greetingMessage: string; // Mensaje inicial personalizable
+  offlineMessage: string; // Mensaje fuera de horario (si humano requerido)
+  avatar: string; // URL del avatar del bot
+  locale: 'es' | 'en' | 'pt';
+}
+
+// POST /api/v1/chatbot/sessions
+interface ChatSessionRequest {
+  userId?: string; // Null para anónimos
+  context: {
+    currentPage: string; // URL actual
+    userRole?: string;
+    enrolledCourses?: string[];
+    recentOrders?: string[];
+  };
+}
+
+interface ChatSessionResponse {
+  sessionId: string;
+  greeting: string;
+  suggestedQuestions: string[];
+}
+```
+
+**Contratos de API:**
+
+```typescript
+// POST /api/v1/chatbot/messages
+interface ChatMessageRequest {
+  sessionId: string;
+  message: string;
+  attachments?: string[]; // URLs de archivos adjuntos
+}
+
+interface ChatMessageResponse {
+  messageId: string;
+  response: string;
+  confidence: number; // 0-1, umbral para escalamiento
+  suggestedActions?: ChatAction[];
+  escalationRequired: boolean;
+  relatedArticles?: ArticleReference[];
+}
+
+interface ChatAction {
+  type: 'link' | 'form' | 'escalate' | 'article';
+  label: string;
+  payload: string; // URL o ID según tipo
+}
+```
+
+**Reglas de negocio:**
+
+1. Widget disponible en todas las páginas excepto checkout payment step
+2. Si `confidence < 0.6`, sugerir artículos relacionados o escalar
+3. Historial de sesión persistido 24h para usuarios anónimos, 30 días para autenticados
+4. Rate limiting: 30 mensajes/hora por sesión
+5. Máximo 3 archivos adjuntos de 5MB cada uno
+
+---
+
+### RF-CHATBOT-002: Sugerencias Contextuales Inteligentes
+
+**Propósito:** Mostrar preguntas y acciones relevantes según contexto del usuario.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/chatbot/suggestions
+interface SuggestionsRequest {
+  sessionId: string;
+  context: UserContext;
+}
+
+interface UserContext {
+  currentPage: string;
+  userRole?: 'anonymous' | 'student' | 'instructor' | 'admin';
+  recentActivity?: {
+    lastViewedCourse?: string;
+    lastPurchase?: string;
+    openTickets?: number;
+  };
+  locale: string;
+}
+
+interface SuggestionsResponse {
+  quickActions: QuickAction[];
+  suggestedQuestions: string[];
+  contextualHelp: string; // Tip específico para la página
+}
+
+interface QuickAction {
+  id: string;
+  icon: string;
+  label: string;
+  type: 'navigate' | 'action' | 'dialog';
+  payload: string;
+}
+```
+
+**Sugerencias por página:**
+
+| Página                | Sugerencias                                                            |
+| --------------------- | ---------------------------------------------------------------------- |
+| `/courses/:slug`      | "¿Tiene prerequisitos?", "¿Hay certificado?", "Ver opiniones"          |
+| `/checkout`           | "¿Métodos de pago?", "¿Garantía de devolución?", "Código de descuento" |
+| `/player/:id`         | "No carga el video", "¿Puedo descargar?", "Reportar problema"          |
+| `/account/orders`     | "Ver factura", "Solicitar reembolso", "Problema con pago"              |
+| `/instructor/courses` | "Crear nuevo curso", "Ver analytics", "Retirar ganancias"              |
+
+---
+
+### RF-CHATBOT-003: Escalamiento a Soporte Humano
+
+**Propósito:** Transición fluida del chatbot a agente humano cuando sea necesario.
+
+**Especificación técnica:**
+
+```typescript
+// POST /api/v1/chatbot/escalate
+interface EscalationRequest {
+  sessionId: string;
+  reason: EscalationReason;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  summary: string; // Resumen generado por IA del chat
+  transcript: ChatTranscript[];
+}
+
+type EscalationReason =
+  | 'user_requested' // Usuario pidió hablar con humano
+  | 'low_confidence' // Bot no puede responder
+  | 'complex_issue' // Tema detectado como complejo
+  | 'frustrated_user' // Análisis de sentimiento negativo
+  | 'billing_dispute' // Temas de pago sensibles
+  | 'technical_failure'; // Error técnico detectado
+
+interface EscalationResponse {
+  ticketId: string;
+  estimatedWaitTime: string; // Ej: "15-30 minutos"
+  queuePosition?: number;
+  handoffMessage: string; // Mensaje de transición
+  followUpOptions: {
+    email: boolean; // Recibir respuesta por email
+    callback: boolean; // Solicitar llamada
+    livechat: boolean; // Esperar en chat (si disponible)
+  };
+}
+```
+
+**Reglas de escalamiento automático:**
+
+1. 3 intentos fallidos consecutivos → ofrecer escalamiento
+2. Palabras clave: "hablar con humano", "supervisor", "queja"
+3. Sentimiento negativo detectado en 3+ mensajes
+4. Temas sensibles: reembolsos >$100, disputas de cobro
+5. Horario de atención humana: Lun-Vie 9:00-18:00 COT
+
+---
+
+### RF-CHATBOT-004: Feedback y Mejora Continua
+
+**Propósito:** Recopilar feedback para mejorar respuestas del chatbot.
+
+**Especificación técnica:**
+
+```typescript
+// POST /api/v1/chatbot/feedback
+interface ChatFeedbackRequest {
+  messageId: string;
+  rating: 'helpful' | 'not_helpful';
+  reason?: string; // Razón opcional
+  suggestedAnswer?: string; // Respuesta correcta sugerida por usuario
+}
+
+interface ChatFeedbackResponse {
+  feedbackId: string;
+  thankYouMessage: string;
+}
+
+// GET /api/v1/chatbot/analytics (Admin only)
+interface ChatbotAnalytics {
+  period: DateRange;
+  metrics: {
+    totalSessions: number;
+    totalMessages: number;
+    averageSessionDuration: number;
+    resolutionRate: number; // % resuelto sin escalar
+    escalationRate: number;
+    avgConfidenceScore: number;
+    satisfactionScore: number; // De feedback
+  };
+  topQuestions: QuestionStat[];
+  topUnresolvedQueries: string[]; // Para entrenar modelo
+  conversionFromChat: number; // % que compraron tras chat
+}
+```
+
+---
+
+### RF-KB-001: Portal de Knowledge Base
+
+**Propósito:** Centro de ayuda con artículos organizados por categorías y buscables.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/kb/categories
+interface KBCategoriesResponse {
+  categories: KBCategory[];
+}
+
+interface KBCategory {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  icon: string;
+  articleCount: number;
+  subcategories?: KBCategory[];
+}
+
+// GET /api/v1/kb/articles?category=:slug&search=:query&page=:n
+interface KBArticlesResponse {
+  articles: KBArticle[];
+  pagination: Pagination;
+  filters: {
+    category?: string;
+    tag?: string;
+    search?: string;
+  };
+}
+
+interface KBArticle {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: KBCategory;
+  tags: string[];
+  viewCount: number;
+  helpfulCount: number;
+  updatedAt: string;
+  readTime: number; // Minutos estimados
+}
+```
+
+**Categorías base:**
+
+| Categoría        | Subcategorías                                           |
+| ---------------- | ------------------------------------------------------- |
+| **Comenzar**     | Crear cuenta, Verificar email, Completar perfil         |
+| **Cursos**       | Buscar cursos, Comprar, Acceder contenido, Certificados |
+| **Pagos**        | Métodos de pago, Facturas, Reembolsos, Problemas        |
+| **Cuenta**       | Seguridad, Privacidad, Configuración, Eliminar cuenta   |
+| **Instructores** | Crear curso, Publicar, Ganancias, Promoción             |
+| **Técnico**      | Video no carga, Problemas acceso, Compatibilidad        |
+
+---
+
+### RF-KB-002: Artículos con Versionado y Localización
+
+**Propósito:** Gestión de artículos multiidioma con historial de cambios.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/kb/articles/:slug
+interface KBArticleDetail {
+  id: string;
+  slug: string;
+  title: string;
+  content: string; // Markdown renderizado
+  contentRaw: string; // Markdown original (admin)
+  category: KBCategory;
+  tags: string[];
+
+  // Metadata
+  author: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+
+  // Localización
+  locale: string;
+  availableLocales: string[];
+
+  // Navegación
+  relatedArticles: ArticleReference[];
+  previousArticle?: ArticleReference;
+  nextArticle?: ArticleReference;
+
+  // Stats
+  viewCount: number;
+  helpfulVotes: number;
+  notHelpfulVotes: number;
+}
+
+// POST /api/v1/kb/articles/:id/feedback
+interface ArticleFeedbackRequest {
+  helpful: boolean;
+  comment?: string;
+  missingInfo?: string; // ¿Qué información faltó?
+}
+```
+
+**Reglas de negocio:**
+
+1. Artículos siempre disponibles en español (idioma base)
+2. Fallback a español si traducción no disponible
+3. Historial de 10 versiones anteriores por artículo
+4. Artículos revisados cada 90 días o tras cambios en producto
+
+---
+
+### RF-KB-003: Integración Chatbot-KB
+
+**Propósito:** El chatbot sugiere artículos relevantes de la KB.
+
+**Especificación técnica:**
+
+```typescript
+// POST /api/v1/kb/search/semantic
+interface SemanticSearchRequest {
+  query: string;
+  maxResults: number;
+  filters?: {
+    categories?: string[];
+    locale?: string;
+  };
+}
+
+interface SemanticSearchResponse {
+  results: {
+    article: KBArticle;
+    relevanceScore: number;
+    matchedSection?: string; // Sección específica del artículo
+  }[];
+  suggestedQuery?: string; // Reformulación de búsqueda
+}
+```
+
+**Flujo de integración:**
+
+1. Usuario pregunta en chatbot
+2. Chatbot busca en KB vía semantic search
+3. Si `relevanceScore > 0.8`, responde con contenido del artículo
+4. Si `0.6 < relevanceScore < 0.8`, sugiere artículo como "podría ayudarte"
+5. Si `relevanceScore < 0.6`, intenta NLU interno o escala
+
+---
+
+## 20) Panel de Administración Avanzado
+
+### RF-ADMIN-001: Dashboard Ejecutivo
+
+**Propósito:** Vista consolidada de métricas clave para administradores.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/dashboard
+interface AdminDashboardResponse {
+  period: DateRange;
+
+  // KPIs principales
+  kpis: {
+    totalRevenue: Money;
+    revenueChange: number; // % vs período anterior
+    activeUsers: number;
+    activeUsersChange: number;
+    newEnrollments: number;
+    enrollmentsChange: number;
+    completionRate: number;
+    completionRateChange: number;
+  };
+
+  // Gráficos
+  revenueChart: TimeSeriesData;
+  enrollmentsChart: TimeSeriesData;
+  userActivityChart: TimeSeriesData;
+
+  // Alertas y tareas pendientes
+  alerts: AdminAlert[];
+  pendingTasks: {
+    coursesForReview: number;
+    refundRequests: number;
+    reportedContent: number;
+    supportTickets: number;
+  };
+
+  // Top performers
+  topCourses: CourseStats[];
+  topInstructors: InstructorStats[];
+}
+
+interface AdminAlert {
+  id: string;
+  type: 'warning' | 'error' | 'info';
+  title: string;
+  description: string;
+  action?: {
+    label: string;
+    url: string;
+  };
+  createdAt: string;
+}
+```
+
+---
+
+### RF-ADMIN-002: Gestión de Usuarios Avanzada
+
+**Propósito:** CRUD completo de usuarios con historial y acciones administrativas.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/users
+interface AdminUsersRequest {
+  page: number;
+  pageSize: number;
+  search?: string;
+  filters: {
+    role?: string[];
+    status?: UserStatus[];
+    createdAfter?: string;
+    createdBefore?: string;
+    hasEnrollments?: boolean;
+    hasPurchases?: boolean;
+  };
+  sort: {
+    field: 'createdAt' | 'lastLoginAt' | 'totalSpent' | 'enrollments';
+    order: 'asc' | 'desc';
+  };
+}
+
+interface AdminUserDetail {
+  user: User;
+
+  // Estadísticas
+  stats: {
+    totalSpent: Money;
+    enrollmentCount: number;
+    completedCourses: number;
+    loginCount: number;
+    lastLoginAt: string;
+    lastActivityAt: string;
+  };
+
+  // Historial
+  enrollments: EnrollmentSummary[];
+  orders: OrderSummary[];
+  supportTickets: TicketSummary[];
+
+  // Auditoría
+  auditLog: AuditEntry[];
+  notes: AdminNote[]; // Notas internas de admin
+
+  // Flags
+  flags: {
+    emailVerified: boolean;
+    isRestricted: boolean;
+    restrictionReason?: string;
+    isBanned: boolean;
+    banReason?: string;
+    banExpiresAt?: string;
+  };
+}
+
+// POST /api/v1/admin/users/:id/actions
+interface UserAdminAction {
+  action:
+    | 'verify_email'
+    | 'reset_password'
+    | 'restrict'
+    | 'unrestrict'
+    | 'ban'
+    | 'unban'
+    | 'impersonate'
+    | 'add_note'
+    | 'grant_course'
+    | 'revoke_course'
+    | 'export_data';
+  reason?: string;
+  payload?: Record<string, any>;
+}
+```
+
+**Acciones administrativas:**
+
+| Acción           | Descripción                             | Requiere          |
+| ---------------- | --------------------------------------- | ----------------- |
+| `verify_email`   | Marca email como verificado manualmente | Admin             |
+| `reset_password` | Fuerza reset y envía email              | Admin             |
+| `restrict`       | Limita acciones (comprar, comentar)     | Admin + razón     |
+| `ban`            | Bloquea acceso completamente            | Admin + razón     |
+| `impersonate`    | Login temporal como el usuario          | Super Admin + log |
+| `grant_course`   | Da acceso gratuito a curso              | Admin + razón     |
+| `export_data`    | Genera export GDPR                      | Sistema           |
+
+---
+
+### RF-ADMIN-003: Moderación de Contenido
+
+**Propósito:** Revisión y aprobación de cursos e instructores.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/moderation/queue
+interface ModerationQueueResponse {
+  items: ModerationItem[];
+  pagination: Pagination;
+  summary: {
+    pendingCourses: number;
+    reportedContent: number;
+    pendingInstructors: number;
+  };
+}
+
+interface ModerationItem {
+  id: string;
+  type: 'course_review' | 'content_report' | 'instructor_application';
+  priority: 'low' | 'medium' | 'high';
+  status: 'pending' | 'in_review' | 'approved' | 'rejected';
+
+  // Contexto
+  subject: {
+    type: string;
+    id: string;
+    title: string;
+    createdBy: UserSummary;
+    createdAt: string;
+  };
+
+  // Para reportes
+  report?: {
+    reportedBy: UserSummary;
+    reason: string;
+    description: string;
+  };
+
+  // Asignación
+  assignedTo?: UserSummary;
+  assignedAt?: string;
+}
+
+// POST /api/v1/admin/moderation/:id/decision
+interface ModerationDecision {
+  decision: 'approve' | 'reject' | 'request_changes';
+  feedback: string;
+  internalNotes?: string;
+
+  // Para rechazo
+  violations?: string[]; // Políticas violadas
+
+  // Para cambios
+  requiredChanges?: {
+    field: string;
+    issue: string;
+    suggestion?: string;
+  }[];
+}
+```
+
+**Checklist de revisión de cursos:**
+
+- [ ] Título claro y descriptivo
+- [ ] Descripción completa con objetivos
+- [ ] Miniatura apropiada (sin texto engañoso)
+- [ ] Precio razonable para el contenido
+- [ ] Videos de calidad aceptable
+- [ ] Sin contenido plagiado
+- [ ] Sin información de contacto externa
+- [ ] Cumple términos de servicio
+
+---
+
+### RF-ADMIN-004: Gestión Financiera
+
+**Propósito:** Control de ingresos, pagos a instructores y reportes fiscales.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/finance/overview
+interface FinanceOverviewResponse {
+  period: DateRange;
+
+  revenue: {
+    gross: Money;
+    netAfterFees: Money; // Después de fees de pago
+    platformCommission: Money;
+    instructorPayouts: Money;
+    refunds: Money;
+    chargebacks: Money;
+  };
+
+  breakdown: {
+    byPaymentMethod: {
+      method: string;
+      amount: Money;
+      transactions: number;
+      fees: Money;
+    }[];
+    byCourse: {
+      courseId: string;
+      title: string;
+      revenue: Money;
+      sales: number;
+    }[];
+    byInstructor: {
+      instructorId: string;
+      name: string;
+      revenue: Money;
+      commission: Money;
+      pending: Money;
+    }[];
+  };
+
+  pending: {
+    instructorPayouts: Money;
+    refundRequests: number;
+    disputes: number;
+  };
+}
+
+// GET /api/v1/admin/finance/payouts
+interface PayoutQueueResponse {
+  payouts: PendingPayout[];
+  summary: {
+    totalPending: Money;
+    instructorsToPaycount: number;
+    nextPayoutDate: string;
+  };
+}
+
+interface PendingPayout {
+  instructorId: string;
+  instructorName: string;
+  amount: Money;
+  paymentMethod: string; // bank_transfer, paypal, etc.
+  periodStart: string;
+  periodEnd: string;
+  sales: number;
+  commissionRate: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
+// POST /api/v1/admin/finance/payouts/process
+interface ProcessPayoutsRequest {
+  payoutIds: string[]; // Específicos o todos
+  processAll: boolean;
+}
+```
+
+**Reportes fiscales:**
+
+- Reporte mensual de ventas por país
+- Reporte de comisiones por instructor
+- Reporte de IVA/impuestos retenidos
+- Facturas electrónicas (DIAN Colombia)
+
+---
+
+### RF-ADMIN-005: Analytics y Reportes
+
+**Propósito:** Reportes personalizables y exportables.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/reports/generate
+interface ReportRequest {
+  type: ReportType;
+  period: DateRange;
+  filters?: Record<string, any>;
+  format: 'json' | 'csv' | 'xlsx' | 'pdf';
+  delivery: 'download' | 'email';
+}
+
+type ReportType =
+  | 'sales_summary'
+  | 'instructor_performance'
+  | 'course_analytics'
+  | 'user_growth'
+  | 'completion_rates'
+  | 'revenue_by_category'
+  | 'refund_analysis'
+  | 'support_metrics'
+  | 'audit_log';
+
+interface ReportResponse {
+  reportId: string;
+  status: 'generating' | 'ready' | 'failed';
+  downloadUrl?: string;
+  expiresAt?: string;
+}
+
+// GET /api/v1/admin/analytics/realtime
+interface RealtimeAnalyticsResponse {
+  activeUsers: number;
+  activeSessions: number;
+  currentlyWatching: {
+    courseId: string;
+    title: string;
+    viewers: number;
+  }[];
+  recentOrders: OrderSummary[];
+  recentSignups: number; // Últimos 15 min
+}
+```
+
+---
+
+### RF-ADMIN-006: Configuración del Sistema
+
+**Propósito:** Ajustes globales de la plataforma.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/settings
+interface SystemSettingsResponse {
+  general: {
+    siteName: string;
+    siteDescription: string;
+    supportEmail: string;
+    defaultLocale: string;
+    defaultCurrency: string;
+    maintenanceMode: boolean;
+    maintenanceMessage?: string;
+  };
+
+  commerce: {
+    platformCommissionRate: number; // % de comisión
+    minimumPayout: Money;
+    payoutSchedule: 'weekly' | 'biweekly' | 'monthly';
+    allowedPaymentMethods: string[];
+    refundWindowDays: number;
+  };
+
+  content: {
+    maxVideoSizeMB: number;
+    allowedVideoFormats: string[];
+    requireCourseReview: boolean;
+    autoPublishAfterReview: boolean;
+    minimumCoursePriceUSD: number;
+    maximumCoursePriceUSD: number;
+  };
+
+  security: {
+    maxLoginAttempts: number;
+    lockoutDurationMinutes: number;
+    sessionTimeoutMinutes: number;
+    require2FA: boolean;
+    passwordMinLength: number;
+    allowedEmailDomains?: string[]; // Null = todos permitidos
+  };
+
+  emails: {
+    smtpConfigured: boolean;
+    fromName: string;
+    fromEmail: string;
+    templates: {
+      welcome: boolean;
+      purchase: boolean;
+      enrollment: boolean;
+      // ...
+    };
+  };
+
+  integrations: {
+    stripeEnabled: boolean;
+    mercadoPagoEnabled: boolean;
+    googleAnalyticsId?: string;
+    facebookPixelId?: string;
+    intercomAppId?: string;
+  };
+}
+
+// PATCH /api/v1/admin/settings/:section
+interface UpdateSettingsRequest {
+  settings: Partial<SystemSettings>;
+  reason: string; // Para audit log
+}
+```
+
+---
+
+### RF-ADMIN-007: Auditoría y Seguridad
+
+**Propósito:** Registro completo de acciones administrativas y detección de anomalías.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/admin/audit-log
+interface AuditLogRequest {
+  page: number;
+  pageSize: number;
+  filters: {
+    actorId?: string;
+    action?: string[];
+    resourceType?: string[];
+    dateFrom?: string;
+    dateTo?: string;
+    severity?: ('info' | 'warning' | 'critical')[];
+  };
+}
+
+interface AuditEntry {
+  id: string;
+  timestamp: string;
+  actor: {
+    id: string;
+    name: string;
+    role: string;
+    ip: string;
+    userAgent: string;
+  };
+  action: string;
+  resource: {
+    type: string;
+    id: string;
+    name?: string;
+  };
+  changes?: {
+    field: string;
+    oldValue: any;
+    newValue: any;
+  }[];
+  severity: 'info' | 'warning' | 'critical';
+  metadata?: Record<string, any>;
+}
+
+// GET /api/v1/admin/security/alerts
+interface SecurityAlertsResponse {
+  alerts: SecurityAlert[];
+  summary: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+}
+
+interface SecurityAlert {
+  id: string;
+  type:
+    | 'brute_force_attempt'
+    | 'unusual_login_location'
+    | 'privilege_escalation'
+    | 'mass_data_access'
+    | 'failed_payment_spike'
+    | 'suspicious_refund_pattern';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  description: string;
+  affectedUser?: UserSummary;
+  metadata: Record<string, any>;
+  status: 'open' | 'investigating' | 'resolved' | 'false_positive';
+  createdAt: string;
+}
+```
+
+---
+
+## 21) Panel de Instructor Avanzado
+
+### RF-INSTRUCTOR-001: Dashboard de Instructor
+
+**Propósito:** Vista personalizada de métricas y tareas para instructores.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/instructor/dashboard
+interface InstructorDashboardResponse {
+  instructor: InstructorProfile;
+
+  // KPIs del período
+  kpis: {
+    totalEarnings: Money;
+    earningsChange: number;
+    totalStudents: number;
+    studentsChange: number;
+    avgRating: number;
+    ratingChange: number;
+    coursesPublished: number;
+  };
+
+  // Gráficos
+  earningsChart: TimeSeriesData;
+  enrollmentsChart: TimeSeriesData;
+
+  // Actividad reciente
+  recentEnrollments: EnrollmentSummary[];
+  recentReviews: ReviewSummary[];
+  recentQuestions: QuestionSummary[];
+
+  // Tareas pendientes
+  pendingTasks: {
+    questionsToAnswer: number;
+    assignmentsToGrade: number;
+    reviewsToRespond: number;
+    coursesInDraft: number;
+  };
+
+  // Earnings disponibles
+  availableForWithdrawal: Money;
+  nextPayoutDate: string;
+}
+```
+
+---
+
+### RF-INSTRUCTOR-002: Quiz Builder Avanzado
+
+**Propósito:** Herramienta visual para crear evaluaciones con múltiples tipos de preguntas.
+
+**Especificación técnica:**
+
+```typescript
+// POST /api/v1/instructor/quizzes
+interface CreateQuizRequest {
+  courseId: string;
+  lessonId?: string; // Si pertenece a lección específica
+  title: string;
+  description?: string;
+
+  settings: QuizSettings;
+  questions: QuizQuestion[];
+}
+
+interface QuizSettings {
+  type: 'practice' | 'graded' | 'survey';
+  timeLimit?: number; // Minutos, null = sin límite
+  attempts: number | 'unlimited';
+  passingScore?: number; // Porcentaje (solo graded)
+  shuffleQuestions: boolean;
+  shuffleAnswers: boolean;
+  showCorrectAnswers:
+    | 'immediately'
+    | 'after_submit'
+    | 'after_deadline'
+    | 'never';
+  showFeedback: boolean;
+  releaseDate?: string;
+  deadline?: string;
+  lateSubmissionPolicy?: {
+    allowed: boolean;
+    penaltyPerDay: number; // % de penalización
+    maxDaysLate: number;
+  };
+}
+
+interface QuizQuestion {
+  id: string;
+  order: number;
+  type: QuestionType;
+  question: string; // Soporta Markdown
+  mediaUrl?: string; // Imagen/video opcional
+  points: number;
+  required: boolean;
+
+  // Según tipo
+  options?: QuestionOption[]; // Para multiple choice
+  correctAnswer?: string; // Para short answer
+  rubric?: GradingRubric; // Para essay
+  codeConfig?: CodeQuestionConfig;
+  matchingPairs?: MatchingPair[];
+}
+
+type QuestionType =
+  | 'multiple_choice' // Una respuesta correcta
+  | 'multiple_answer' // Múltiples correctas
+  | 'true_false'
+  | 'short_answer' // Texto corto
+  | 'essay' // Texto largo
+  | 'code' // Código con evaluación
+  | 'matching' // Emparejar columnas
+  | 'ordering' // Ordenar elementos
+  | 'fill_blank'; // Completar espacios
+
+interface QuestionOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+  feedback?: string; // Feedback específico de esta opción
+}
+
+interface GradingRubric {
+  criteria: {
+    name: string;
+    description: string;
+    maxPoints: number;
+    levels: {
+      score: number;
+      description: string;
+    }[];
+  }[];
+}
+
+interface CodeQuestionConfig {
+  language: string;
+  starterCode?: string;
+  testCases: {
+    input: string;
+    expectedOutput: string;
+    isHidden: boolean; // Tests ocultos para anti-trampa
+    points: number;
+  }[];
+  timeoutMs: number;
+  memoryLimitMB: number;
+}
+```
+
+---
+
+### RF-INSTRUCTOR-003: Gestión de Estudiantes
+
+**Propósito:** Ver y gestionar estudiantes matriculados en cursos propios.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/instructor/courses/:courseId/students
+interface CourseStudentsResponse {
+  students: StudentProgress[];
+  pagination: Pagination;
+  summary: {
+    totalEnrolled: number;
+    activeLastWeek: number;
+    completionRate: number;
+    avgProgress: number;
+  };
+}
+
+interface StudentProgress {
+  userId: string;
+  name: string;
+  email: string; // Solo visible para instructor
+  enrolledAt: string;
+  lastAccessAt: string;
+
+  progress: {
+    percentage: number;
+    completedLessons: number;
+    totalLessons: number;
+    timeSpent: number; // Minutos
+  };
+
+  grades: {
+    quizzes: {
+      completed: number;
+      total: number;
+      avgScore: number;
+    };
+    assignments: {
+      submitted: number;
+      graded: number;
+      pending: number;
+      avgScore: number;
+    };
+  };
+
+  engagement: {
+    questionsAsked: number;
+    discussionPosts: number;
+    notesCreated: number;
+  };
+}
+
+// POST /api/v1/instructor/courses/:courseId/students/:userId/message
+interface MessageStudentRequest {
+  subject: string;
+  message: string;
+  type: 'general' | 'reminder' | 'feedback' | 'congratulation';
+}
+```
+
+---
+
+### RF-INSTRUCTOR-004: Calificación Manual
+
+**Propósito:** Revisar y calificar submissions de essays y tareas complejas.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/instructor/grading/pending
+interface PendingGradingResponse {
+  submissions: PendingSubmission[];
+  pagination: Pagination;
+  summary: {
+    totalPending: number;
+    overdueGrading: number; // Más de 7 días sin calificar
+  };
+}
+
+interface PendingSubmission {
+  submissionId: string;
+  student: UserSummary;
+  course: CourseSummary;
+  assignment: AssignmentSummary;
+  submittedAt: string;
+  daysWaiting: number;
+
+  // Preview
+  answerPreview: string; // Primeros 500 chars
+  attachments: string[]; // URLs
+
+  // AI assist
+  aiSuggestedScore?: number;
+  aiFeedback?: string;
+}
+
+// POST /api/v1/instructor/grading/:submissionId
+interface GradeSubmissionRequest {
+  scores: {
+    criterionId: string;
+    score: number;
+    comment?: string;
+  }[];
+  overallFeedback: string;
+  finalScore: number;
+
+  // Opciones
+  publishImmediately: boolean;
+  allowResubmission: boolean;
+  resubmissionDeadline?: string;
+}
+```
+
+---
+
+### RF-INSTRUCTOR-005: Foros de Discusión
+
+**Propósito:** Gestionar discusiones y Q&A de cursos.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/courses/:courseId/discussions
+interface DiscussionsResponse {
+  threads: DiscussionThread[];
+  pagination: Pagination;
+  stats: {
+    totalThreads: number;
+    unanswered: number;
+    answeredByInstructor: number;
+  };
+}
+
+interface DiscussionThread {
+  id: string;
+  title: string;
+  content: string;
+  author: UserSummary;
+  createdAt: string;
+
+  // Contexto
+  lessonId?: string;
+  lessonTitle?: string;
+
+  // Estado
+  isAnswered: boolean;
+  isPinned: boolean;
+  isLocked: boolean;
+
+  // Stats
+  repliesCount: number;
+  likesCount: number;
+  viewsCount: number;
+
+  // Última actividad
+  lastReply?: {
+    author: UserSummary;
+    createdAt: string;
+    isInstructor: boolean;
+  };
+}
+
+// POST /api/v1/courses/:courseId/discussions/:threadId/replies
+interface CreateReplyRequest {
+  content: string; // Markdown
+  markAsAnswer: boolean; // Solo instructor puede marcar
+  attachments?: string[];
+}
+
+// Acciones de instructor
+// POST /api/v1/instructor/discussions/:threadId/actions
+interface DiscussionActionRequest {
+  action:
+    | 'pin'
+    | 'unpin'
+    | 'lock'
+    | 'unlock'
+    | 'mark_answered'
+    | 'delete'
+    | 'move';
+  reason?: string;
+  targetLessonId?: string; // Para move
+}
+```
+
+---
+
+### RF-INSTRUCTOR-006: Analytics de Cursos
+
+**Propósito:** Métricas detalladas de rendimiento de cursos.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/instructor/courses/:courseId/analytics
+interface CourseAnalyticsResponse {
+  course: CourseSummary;
+  period: DateRange;
+
+  // Métricas de ventas
+  sales: {
+    totalRevenue: Money;
+    instructorEarnings: Money;
+    totalEnrollments: number;
+    refunds: number;
+    refundRate: number;
+  };
+
+  // Métricas de engagement
+  engagement: {
+    avgTimePerSession: number;
+    avgLessonsPerSession: number;
+    completionRate: number;
+    dropOffRate: number;
+  };
+
+  // Análisis de contenido
+  contentAnalysis: {
+    lessonId: string;
+    title: string;
+    viewCount: number;
+    avgWatchTime: number; // % del video visto
+    dropOffPoint?: number; // Segundo donde más abandonan
+    questions: number;
+    rating?: number;
+  }[];
+
+  // Análisis de quizzes
+  quizAnalysis: {
+    quizId: string;
+    title: string;
+    attempts: number;
+    avgScore: number;
+    passRate: number;
+    hardestQuestions: {
+      questionId: string;
+      question: string;
+      correctRate: number;
+    }[];
+  }[];
+
+  // Reviews
+  reviews: {
+    avgRating: number;
+    ratingDistribution: number[]; // [1star, 2star, 3star, 4star, 5star]
+    recentReviews: ReviewSummary[];
+    sentiment: {
+      positive: string[]; // Temas mencionados positivamente
+      negative: string[]; // Temas mencionados negativamente
+    };
+  };
+
+  // Comparativa
+  benchmark: {
+    categoryAvgRating: number;
+    categoryAvgCompletion: number;
+    categoryAvgPrice: Money;
+    yourRanking: number; // Posición en categoría
+  };
+}
+```
+
+---
+
+### RF-INSTRUCTOR-007: Media Library
+
+**Propósito:** Gestión centralizada de archivos multimedia del instructor.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/instructor/media
+interface MediaLibraryResponse {
+  items: MediaItem[];
+  pagination: Pagination;
+  usage: {
+    totalSizeMB: number;
+    limitMB: number;
+    videoCount: number;
+    imageCount: number;
+    documentCount: number;
+  };
+}
+
+interface MediaItem {
+  id: string;
+  filename: string;
+  type: 'video' | 'image' | 'document' | 'audio';
+  mimeType: string;
+  sizeMB: number;
+  uploadedAt: string;
+
+  // URLs
+  url: string; // Presigned, temporal
+  thumbnailUrl?: string;
+
+  // Metadata
+  metadata: {
+    duration?: number; // Para video/audio
+    dimensions?: {
+      width: number;
+      height: number;
+    };
+    processingStatus: 'pending' | 'processing' | 'ready' | 'failed';
+    transcriptionStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  };
+
+  // Uso
+  usedIn: {
+    type: 'course' | 'lesson' | 'quiz';
+    id: string;
+    title: string;
+  }[];
+}
+
+// POST /api/v1/instructor/media/upload
+interface UploadMediaRequest {
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+interface UploadMediaResponse {
+  mediaId: string;
+  uploadUrl: string; // Presigned PUT URL
+  expiresAt: string;
+}
+
+// POST /api/v1/instructor/media/:id/process
+interface ProcessMediaRequest {
+  operations: (
+    | { type: 'transcode'; quality: 'low' | 'medium' | 'high' | 'all' }
+    | { type: 'thumbnail'; timestamp?: number }
+    | { type: 'transcribe'; language?: string }
+    | { type: 'compress' }
+  )[];
+}
+```
+
+---
+
+## 22) Experiencia del Estudiante Avanzada
+
+### RF-STUDENT-001: Video Player Enriquecido
+
+**Propósito:** Reproductor de video con funcionalidades avanzadas de aprendizaje.
+
+**Especificación técnica:**
+
+```typescript
+// Configuración del player
+interface VideoPlayerConfig {
+  videoUrl: string;
+  subtitles: SubtitleTrack[];
+  playbackRates: number[]; // [0.5, 0.75, 1, 1.25, 1.5, 2]
+  quality: VideoQuality[];
+
+  features: {
+    autoplay: boolean;
+    pictureInPicture: boolean;
+    fullscreen: boolean;
+    theater: boolean;
+    keyboard: boolean; // Atajos de teclado
+    chromecast: boolean;
+    airplay: boolean;
+  };
+
+  resumeAt?: number; // Segundo donde continuar
+  bookmarks: Bookmark[];
+  notes: VideoNote[];
+}
+
+interface SubtitleTrack {
+  language: string;
+  label: string;
+  url: string; // VTT file
+  isDefault: boolean;
+}
+
+interface VideoQuality {
+  label: string; // "1080p", "720p", etc.
+  url: string;
+  width: number;
+  height: number;
+}
+
+interface Bookmark {
+  id: string;
+  timestamp: number;
+  label: string;
+  isSystemGenerated: boolean; // Chapters del instructor
+}
+
+// POST /api/v1/lessons/:lessonId/progress
+interface LessonProgressEvent {
+  eventType: 'play' | 'pause' | 'seek' | 'complete' | 'heartbeat';
+  timestamp: number; // Posición en video
+  playbackRate: number;
+  totalWatchedSeconds: number;
+}
+```
+
+**Funcionalidades del player:**
+
+- **Atajos de teclado:** Space=play/pause, ←/→=±10s, ↑/↓=volumen, F=fullscreen
+- **Picture-in-Picture:** Seguir viendo mientras navega
+- **Velocidad variable:** 0.5x a 2x con pitch correction
+- **Chapters:** Navegación por secciones del video
+- **Autoplay next:** Siguiente lección automáticamente
+- **Remember position:** Recordar donde quedó
+
+---
+
+### RF-STUDENT-002: Sistema de Notas Personal
+
+**Propósito:** Tomar y organizar notas durante el aprendizaje.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/students/notes
+interface StudentNotesResponse {
+  notes: Note[];
+  pagination: Pagination;
+  stats: {
+    totalNotes: number;
+    notesByCourse: {
+      courseId: string;
+      title: string;
+      count: number;
+    }[];
+  };
+}
+
+interface Note {
+  id: string;
+  content: string; // Markdown
+
+  // Contexto
+  context: {
+    courseId: string;
+    courseTitle: string;
+    lessonId?: string;
+    lessonTitle?: string;
+    videoTimestamp?: number; // Si tomada durante video
+  };
+
+  // Organización
+  tags: string[];
+  color?: string; // Highlight color
+  isPinned: boolean;
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+// POST /api/v1/students/notes
+interface CreateNoteRequest {
+  content: string;
+  courseId: string;
+  lessonId?: string;
+  videoTimestamp?: number;
+  tags?: string[];
+}
+
+// GET /api/v1/students/notes/export
+interface ExportNotesRequest {
+  format: 'markdown' | 'pdf' | 'docx';
+  courseId?: string; // Todas o de un curso
+  includeTimestamps: boolean;
+}
+```
+
+---
+
+### RF-STUDENT-003: Wishlist y Favoritos
+
+**Propósito:** Guardar cursos para ver/comprar después.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/students/wishlist
+interface WishlistResponse {
+  items: WishlistItem[];
+  pagination: Pagination;
+}
+
+interface WishlistItem {
+  id: string;
+  addedAt: string;
+  course: CourseSummary;
+
+  // Alertas
+  priceAlert: {
+    enabled: boolean;
+    targetPrice?: Money;
+    notifyOnAnyDiscount: boolean;
+  };
+
+  // Estado
+  currentPrice: Money;
+  priceDropped: boolean;
+  priceDropAmount?: Money;
+  isOnSale: boolean;
+  saleEndsAt?: string;
+}
+
+// POST /api/v1/students/wishlist
+interface AddToWishlistRequest {
+  courseId: string;
+  priceAlertEnabled?: boolean;
+  targetPrice?: number;
+}
+
+// POST /api/v1/students/wishlist/:id/alert
+interface UpdatePriceAlertRequest {
+  enabled: boolean;
+  targetPrice?: number;
+  notifyOnAnyDiscount: boolean;
+}
+```
+
+---
+
+### RF-STUDENT-004: Foros y Comunidad
+
+**Propósito:** Participación en discusiones de cursos.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/students/discussions
+interface MyDiscussionsResponse {
+  threads: {
+    started: DiscussionThread[];
+    participated: DiscussionThread[];
+    bookmarked: DiscussionThread[];
+  };
+  stats: {
+    threadsStarted: number;
+    repliesPosted: number;
+    likesReceived: number;
+    markedAsAnswer: number;
+  };
+}
+
+// POST /api/v1/courses/:courseId/discussions
+interface CreateDiscussionRequest {
+  title: string;
+  content: string; // Markdown
+  lessonId?: string; // Asociar a lección
+  tags?: string[];
+  attachments?: string[];
+}
+
+// Interacciones
+// POST /api/v1/discussions/:threadId/like
+// POST /api/v1/discussions/:threadId/bookmark
+// POST /api/v1/discussions/:threadId/report
+interface ReportDiscussionRequest {
+  reason: 'spam' | 'inappropriate' | 'off_topic' | 'harassment' | 'other';
+  description?: string;
+}
+```
+
+---
+
+### RF-STUDENT-005: Mensajería con Instructor
+
+**Propósito:** Comunicación directa con instructores de cursos matriculados.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/students/messages
+interface StudentMessagesResponse {
+  conversations: Conversation[];
+  unreadCount: number;
+}
+
+interface Conversation {
+  id: string;
+  instructor: UserSummary;
+  course: CourseSummary;
+
+  lastMessage: {
+    content: string;
+    sentAt: string;
+    sentBy: 'student' | 'instructor';
+    isRead: boolean;
+  };
+
+  unreadCount: number;
+  createdAt: string;
+}
+
+// GET /api/v1/students/messages/:conversationId
+interface ConversationDetailResponse {
+  conversation: Conversation;
+  messages: Message[];
+  pagination: Pagination;
+}
+
+interface Message {
+  id: string;
+  content: string;
+  attachments?: {
+    filename: string;
+    url: string;
+    type: string;
+  }[];
+  sentBy: 'student' | 'instructor';
+  sentAt: string;
+  readAt?: string;
+}
+
+// POST /api/v1/students/messages/:conversationId
+interface SendMessageRequest {
+  content: string;
+  attachments?: string[]; // IDs de archivos subidos
+}
+
+// Restricciones:
+// - Solo puede mensajear instructores de cursos matriculados
+// - Rate limit: 10 mensajes/hora por conversación
+// - Instructor puede bloquear mensajes (reportar abuso)
+```
+
+---
+
+## 23) Sistema de Suscripciones
+
+### RF-SUB-001: Planes de Suscripción
+
+**Propósito:** Ofrecer acceso ilimitado mediante planes mensuales/anuales.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/subscriptions/plans
+interface SubscriptionPlansResponse {
+  plans: SubscriptionPlan[];
+  currentPlan?: ActiveSubscription;
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+
+  pricing: {
+    monthly: Money;
+    yearly: Money;
+    yearlyDiscount: number; // % de ahorro
+  };
+
+  features: {
+    unlimitedCourses: boolean;
+    downloadVideos: boolean;
+    certificates: boolean;
+    prioritySupport: boolean;
+    exclusiveContent: boolean;
+    aiTutor: boolean;
+    offlineAccess: boolean;
+  };
+
+  restrictions?: {
+    coursesPerMonth?: number; // Si no es ilimitado
+    downloadLimit?: number;
+  };
+
+  isPopular: boolean; // Highlight en UI
+  trialDays: number; // 0 si no hay trial
+}
+
+interface ActiveSubscription {
+  id: string;
+  plan: SubscriptionPlan;
+  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'expired';
+
+  billing: {
+    interval: 'monthly' | 'yearly';
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    nextBillingDate: string;
+    amount: Money;
+  };
+
+  canceledAt?: string;
+  cancelReason?: string;
+  willRenew: boolean;
+}
+```
+
+---
+
+### RF-SUB-002: Gestión de Facturación
+
+**Propósito:** Control de método de pago y historial de cobros.
+
+**Especificación técnica:**
+
+```typescript
+// GET /api/v1/subscriptions/billing
+interface BillingInfoResponse {
+  paymentMethods: PaymentMethod[];
+  defaultPaymentMethod?: PaymentMethod;
+
+  invoices: Invoice[];
+
+  upcomingInvoice?: {
+    amount: Money;
+    dueDate: string;
+    items: {
+      description: string;
+      amount: Money;
+    }[];
+  };
+}
+
+interface PaymentMethod {
+  id: string;
+  type: 'card' | 'bank_transfer' | 'paypal';
+  isDefault: boolean;
+
+  // Para card
+  card?: {
+    brand: string; // visa, mastercard, etc.
+    last4: string;
+    expiryMonth: number;
+    expiryYear: number;
+  };
+
+  // Para bank
+  bank?: {
+    bankName: string;
+    last4: string;
+  };
+}
+
+interface Invoice {
+  id: string;
+  number: string;
+  status: 'paid' | 'open' | 'void' | 'uncollectible';
+  amount: Money;
+  paidAt?: string;
+  dueDate: string;
+  pdfUrl: string;
+
+  items: {
+    description: string;
+    quantity: number;
+    unitPrice: Money;
+    amount: Money;
+  }[];
+}
+
+// POST /api/v1/subscriptions/billing/payment-method
+interface AddPaymentMethodRequest {
+  type: 'card';
+  token: string; // Token de Stripe/MP
+  setAsDefault: boolean;
+}
+
+// POST /api/v1/subscriptions/billing/update-plan
+interface ChangePlanRequest {
+  newPlanId: string;
+  billingInterval: 'monthly' | 'yearly';
+  prorationBehavior: 'create_prorations' | 'none';
+}
+```
+
+---
+
+### RF-SUB-003: Lifecycle de Suscripción
+
+**Propósito:** Gestión del ciclo de vida completo de la suscripción.
+
+**Especificación técnica:**
+
+```typescript
+// POST /api/v1/subscriptions/subscribe
+interface SubscribeRequest {
+  planId: string;
+  billingInterval: 'monthly' | 'yearly';
+  paymentMethodId: string;
+  couponCode?: string;
+}
+
+interface SubscribeResponse {
+  subscription: ActiveSubscription;
+  invoice: Invoice;
+  requiresAction: boolean; // Si necesita 3DS
+  clientSecret?: string; // Para confirmar con Stripe.js
+}
+
+// POST /api/v1/subscriptions/cancel
+interface CancelSubscriptionRequest {
+  reason: CancelReason;
+  feedback?: string;
+  cancelImmediately: boolean; // O al final del período
+}
+
+type CancelReason =
+  | 'too_expensive'
+  | 'not_using'
+  | 'found_alternative'
+  | 'missing_features'
+  | 'technical_issues'
+  | 'temporary'
+  | 'other';
+
+interface CancelSubscriptionResponse {
+  subscription: ActiveSubscription;
+  accessUntil: string;
+  canReactivate: boolean;
+
+  // Retención
+  offer?: RetentionOffer;
+}
+
+interface RetentionOffer {
+  type: 'discount' | 'pause' | 'downgrade';
+  description: string;
+
+  // Para discount
+  discountPercent?: number;
+  discountMonths?: number;
+
+  // Para pause
+  pauseMonths?: number;
+
+  // Para downgrade
+  alternativePlan?: SubscriptionPlan;
+}
+
+// POST /api/v1/subscriptions/reactivate
+// POST /api/v1/subscriptions/pause
+interface PauseSubscriptionRequest {
+  months: number; // 1-3 meses
+  reason?: string;
+}
+```
+
+---
+
+## 24) Fuera de alcance MVP (para backlog)
+
+- Marketplace multi-tenant, cupones/descuentos avanzados, certificaciones formales, app móvil nativa, gamification/badges, learning paths.
+
+## 25) Trazabilidad (mapa RF ↔ endpoints/tablas)
+
+- **auth-service:** RF-AUTH-001..004 ↔ `/api/v1/auth/*`, tables: sessions
+- **users-service:** RF-USERS-001..003 ↔ `/api/v1/users/*`, tables: users, user_preferences
+- **courses-service:** RF-COURSES-001..005 ↔ `/api/v1/courses/*`, tables: courses, lessons
+- **enrollments-service:** RF-ENR-001..004 ↔ `/api/v1/enrollments/*`, tables: enrollments
+- **content-service:** RF-CONTENT-001..002 ↔ `/api/v1/content/*`, MinIO buckets
+- **assignments-service:** RF-ASSIGN-001..002 ↔ `/api/v1/quizzes/*`, tables: quizzes, quiz_questions
+- **grades-service:** RF-GRADES-001..002 ↔ `/api/v1/grades/*`, tables: submissions
+- **payments-service:** RF-PAY-001..003 ↔ `/api/v1/orders`, `/api/v1/payments/webhook/*`, tables: orders
+- **notifications-service:** RF-NOTIF-001..002 ↔ jobs/queues, tables: event_logs
+- **analytics-service:** RF-AN-001..002 ↔ `/api/v1/analytics/*`, tables: event_logs
+- **search-service:** RF-SEARCH-001..002 ↔ `/api/v1/search/*`, indices: courses_index
+- **ai-service:** RF-AI-001..007 ↔ `/api/v1/ai/*`, tables: embeddings
+- **chatbot-service:** RF-CHATBOT-001..004 ↔ `/api/v1/chatbot/*`, tables: chat_sessions, chat_messages
+- **kb-service:** RF-KB-001..003 ↔ `/api/v1/kb/*`, tables: kb_articles, kb_categories
+- **compliance-service:** RF-COMPLIANCE-001..019 ↔ `/api/v1/compliance/*`, tables: consent_records, data_requests
+- **subscription-service:** RF-SUB-001..003 ↔ `/api/v1/subscriptions/*`, tables: subscriptions, invoices
+
+### Mapa Frontend ↔ Backend
+
+| Ruta Frontend    | Servicios Backend                                       |
+| ---------------- | ------------------------------------------------------- |
+| `/`              | courses-service (featured)                              |
+| `/courses`       | courses-service, search-service                         |
+| `/courses/:slug` | courses-service, enrollments-service                    |
+| `/checkout`      | payments-service, enrollments-service                   |
+| `/player/:id`    | content-service, enrollments-service, analytics-service |
+| `/account/*`     | users-service, enrollments-service, payments-service    |
+| `/instructor/*`  | courses-service, analytics-service, grades-service      |
+| `/admin/*`       | Todos los servicios                                     |
+| `/support`       | chatbot-service, kb-service                             |
+| `/legal/*`       | compliance-service                                      |
 
 Anexos (referencias)
 
-- Ver blueprint y nomenclatura en .vscode/copilot-instructions.md e .vscode/\_docs/info-proyecto.md.
+- Ver blueprint y nomenclatura en `.vscode/copilot-instructions.md` e `_docs/business/info-proyecto.md`.
 
 ## 21) ai-service (Inteligencia artificial)
 
@@ -1058,9 +2963,10 @@ Para cada RF implementado:
 
 ---
 
-**Total de RFs definidos:** 52+ funcionalidades (incluyendo soporte y comunicaciones)
-**Servicios principales:** 11 microservicios + frontend + chatbot-service
+**Total de RFs definidos:** 85+ funcionalidades completas
+**Servicios principales:** 16 microservicios + frontend
 **Cobertura IA:** 6 funcionalidades específicas + chatbot con NLU
-**Stack diversity:** 4 tecnologías backend diferentes
+**Compliance:** 19 RFs de cumplimiento legal (GDPR, CCPA, LGPD, Habeas Data)
+**Stack diversity:** Rust backend monolítico con servicios especializados
 
 **Estado:** ✅ **LISTO PARA IMPLEMENTACIÓN**
