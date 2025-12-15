@@ -9,8 +9,32 @@ name = "users"
 path = "src/main.rs"
 
 [dependencies]
+# Internal crate
 shared = { path = "../shared" }
+
+# Web framework
 actix-web.workspace = true
+actix-multipart = "0.7"
+
+# Async runtime
 tokio.workspace = true
+
+# Serialization
 serde.workspace = true
+serde_json.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Validation
+validator.workspace = true
+
+# UUID
+uuid.workspace = true
+
+# Date/Time
+chrono.workspace = true
+
+# Observability
 tracing.workspace = true
+

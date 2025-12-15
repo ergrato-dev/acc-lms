@@ -714,6 +714,162 @@ interface UserPreferences {
 - grade.updated { submissionId, userId, quizId, finalScore, updatedAt }
 - lesson.viewed { userId, courseId, lessonId, viewedAt }
 
+## 18) Soporte y Comunicaciones
+
+### RF-SUPPORT-001: Chatbot como Primer Canal de Ayuda
+
+**Propósito:** Proporcionar soporte automatizado 24/7 como primera línea de atención para todos los roles del sistema.
+
+**Especificación técnica:**
+
+El chatbot será el **canal primario de soporte** antes de escalar a atención humana. Debe ser capaz de:
+
+- Responder preguntas frecuentes (FAQ) sobre la plataforma
+- Guiar a usuarios en procesos comunes (registro, compra, acceso a cursos)
+- Resolver problemas técnicos básicos (reset de contraseña, problemas de video)
+- Escalar a soporte humano cuando no pueda resolver
+
+**Tecnologías recomendadas para implementación:**
+
+| Opción                       | Descripción                                          | Ventajas                                                               | Desventajas                                     |
+| ---------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| **Rasa Open Source**         | Framework open-source para chatbots conversacionales | Control total, self-hosted, NLU personalizable, sin costos de licencia | Requiere más desarrollo, infraestructura propia |
+| **Dialogflow CX** (Google)   | Plataforma enterprise de Google Cloud                | Integraciones nativas, NLU potente, fácil de mantener                  | Costos por uso, dependencia de vendor           |
+| **Amazon Lex**               | Servicio de AWS para chatbots                        | Integración con AWS ecosystem, escalable                               | Costos por uso, curva de aprendizaje            |
+| **Botpress**                 | Plataforma open-source con UI visual                 | Visual flow builder, self-hosted option, plugins                       | Comunidad más pequeña                           |
+| **Custom con OpenAI/Claude** | Implementación propia con LLM                        | Máxima flexibilidad, respuestas naturales                              | Costos por token, requiere fine-tuning          |
+
+**Recomendación para ACC-LMS:**
+
+1. **MVP:** Implementar con **Rasa Open Source** para mantener control total y alinearse con filosofía open-source del proyecto
+2. **Alternativa comercial:** **Dialogflow CX** si se prioriza time-to-market
+3. **Evolución futura:** Integrar capacidades de LLM (OpenAI/Claude) para respuestas más naturales via ai-service
+
+**Arquitectura propuesta:**
+
+```
+┌─────────────┐     ┌─────────────────┐     ┌─────────────┐
+│   Frontend  │────▶│  chatbot-service │────▶│  ai-service │
+│   Widget    │     │   (Rasa/Custom)  │     │  (OpenAI)   │
+└─────────────┘     └────────┬────────┘     └─────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │ knowledge-base  │
+                    │   (FAQ/Docs)    │
+                    └─────────────────┘
+```
+
+**Flujos de escalamiento:**
+
+1. **Tier 1 - Chatbot:** Resuelve 70-80% de consultas automáticamente
+2. **Tier 2 - Formulario de contacto:** Casos no resueltos → ticket categorizado
+3. **Tier 3 - Soporte humano:** Casos complejos vía email interno (nunca público)
+
+**Categorías de soporte por rol:**
+
+| Rol            | Categorías principales                                        |
+| -------------- | ------------------------------------------------------------- |
+| **Student**    | Acceso a cursos, problemas de pago, certificados, contenido   |
+| **Instructor** | Publicación de cursos, analytics, pagos/comisiones, contenido |
+| **Admin**      | Reportes de sistema, usuarios, configuración                  |
+
+---
+
+### RF-SUPPORT-002: Política de Privacidad de Emails
+
+**Propósito:** Proteger la privacidad de usuarios y staff evitando la exposición pública de direcciones de correo electrónico.
+
+**Regla fundamental:**
+
+> ⚠️ **NUNCA se publicarán direcciones de email reales en ninguna página pública de la plataforma.**
+
+**Especificación técnica:**
+
+- **Prohibido:** Mostrar emails de instructores, administradores o soporte en páginas públicas
+- **Prohibido:** Exponer emails en perfiles públicos de usuarios
+- **Prohibido:** Incluir emails en metadata, schema.org, o cualquier markup público
+
+**Comunicación gestionada por formularios:**
+
+Toda comunicación debe canalizarse a través de formularios categorizados:
+
+```typescript
+// POST /api/v1/contact
+interface ContactFormRequest {
+  // Categoría obligatoria para routing
+  category:
+    | 'technical_support' // Problemas técnicos
+    | 'billing_inquiry' // Consultas de facturación
+    | 'course_question' // Preguntas sobre cursos (a instructor)
+    | 'refund_request' // Solicitud de reembolso
+    | 'partnership' // Propuestas de colaboración
+    | 'bug_report' // Reporte de errores
+    | 'feature_request' // Sugerencias de mejora
+    | 'account_issue' // Problemas de cuenta
+    | 'content_report' // Reporte de contenido inapropiado
+    | 'other'; // Otros (requiere descripción)
+
+  // Datos del remitente (autenticado o público)
+  senderEmail: string; // Email del remitente para respuesta
+  senderName: string; // Nombre para personalización
+
+  // Contexto opcional
+  courseId?: string; // Si aplica a curso específico
+  orderId?: string; // Si aplica a orden específica
+
+  // Mensaje
+  subject: string; // Asunto (max 200 chars)
+  message: string; // Mensaje (max 5000 chars)
+
+  // Anti-spam
+  captchaToken: string; // reCAPTCHA/hCaptcha token
+}
+
+interface ContactFormResponse {
+  ticketId: string; // ID para seguimiento
+  estimatedResponseTime: string; // Ej: "24-48 horas"
+  category: string;
+  message: string; // Confirmación
+}
+```
+
+**Routing automático por categoría:**
+
+| Categoría           | Destinatario         | SLA Respuesta |
+| ------------------- | -------------------- | ------------- |
+| `technical_support` | Equipo técnico       | 24h           |
+| `billing_inquiry`   | Equipo financiero    | 24h           |
+| `course_question`   | Instructor del curso | 48h           |
+| `refund_request`    | Equipo financiero    | 48h           |
+| `partnership`       | Equipo comercial     | 72h           |
+| `bug_report`        | Equipo desarrollo    | 48h           |
+| `feature_request`   | Product backlog      | N/A           |
+| `account_issue`     | Equipo soporte       | 24h           |
+| `content_report`    | Moderación           | 24h           |
+| `other`             | Soporte general      | 48h           |
+
+**Páginas de contacto:**
+
+- `/contact` - Formulario público general
+- `/course/:slug/contact` - Formulario para contactar instructor (sin exponer email)
+- `/support` - Centro de ayuda con FAQ + chatbot + formulario
+
+**Reglas de negocio:**
+
+1. Usuarios autenticados: pre-llenar email y nombre del perfil
+2. Rate limiting: máximo 5 mensajes por hora por IP/usuario
+3. Notificación al destinatario via email interno (nunca reply-to público)
+4. Historial de tickets accesible en `/account/support-tickets`
+5. Los instructores reciben mensajes en su panel, nunca su email real
+
+**Protección adicional:**
+
+- Emails en base de datos siempre encriptados at-rest
+- Logs de acceso a datos de email auditados
+- Exportación de datos (GDPR) no incluye emails de otros usuarios
+
+---
+
 ## 19) Fuera de alcance MVP (para backlog)
 
 - Marketplace multi-tenant, cupones/descuentos avanzados, foros/discusiones, certificaciones, app móvil nativa.
@@ -731,6 +887,7 @@ interface UserPreferences {
 - notifications-service: RF-NOTIF-01..02 ↔ jobs/queues, event_logs.
 - analytics-service: RF-AN-01..02 ↔ /api/v1/analytics/\*, event_logs.
 - search-service: RF-SEARCH-01..02 ↔ /api/v1/search/\*, index.
+- **support (frontend + chatbot-service): RF-SUPPORT-01..02 ↔ /api/v1/contact, /support, chatbot widget.**
 
 Anexos (referencias)
 
@@ -901,9 +1058,9 @@ Para cada RF implementado:
 
 ---
 
-**Total de RFs definidos:** 50+ funcionalidades
-**Servicios principales:** 11 microservicios + frontend
-**Cobertura IA:** 6 funcionalidades específicas  
+**Total de RFs definidos:** 52+ funcionalidades (incluyendo soporte y comunicaciones)
+**Servicios principales:** 11 microservicios + frontend + chatbot-service
+**Cobertura IA:** 6 funcionalidades específicas + chatbot con NLU
 **Stack diversity:** 4 tecnologías backend diferentes
 
 **Estado:** ✅ **LISTO PARA IMPLEMENTACIÓN**
