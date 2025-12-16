@@ -12,6 +12,7 @@ members = [
     "users-service",
     "courses-service",
     "enrollments-service",
+    "assessments-service",
     "payments-service",
     "notifications-service",
     "analytics-service",
