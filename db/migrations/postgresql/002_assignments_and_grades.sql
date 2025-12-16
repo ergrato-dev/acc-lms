@@ -1,17 +1,26 @@
 -- Migration: 002_assignments_and_grades.sql
 -- Description: Quizzes, assignments and grading system
--- Author: System  
+-- Author: System
 -- Date: 2025-08-08
+-- Updated: 2025-12-15 (Schema separation)
+--
+-- PREREQUISITE: Run 000_schema_setup.sql and 001_initial_schema.sql first
+--
+-- This migration creates tables in the assessments schema:
+-- - assessments.quizzes : Quiz definitions
+-- - assessments.quiz_questions : Questions for quizzes
+-- - assessments.quiz_submissions : Student quiz attempts
+-- - assessments.quiz_responses : Individual question responses
 
 -- ========================================
--- ASSIGNMENTS & GRADES DOMAIN
+-- ASSESSMENTS SCHEMA: Quizzes & Grades
 -- ========================================
 
 -- Quizzes and assessments
-CREATE TABLE quizzes (
+CREATE TABLE assessments.quizzes (
     quiz_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id UUID NOT NULL REFERENCES courses(course_id) ON DELETE CASCADE,
-    lesson_id UUID REFERENCES lessons(lesson_id) ON DELETE CASCADE,
+    course_id UUID NOT NULL, -- References courses.courses(course_id)
+    lesson_id UUID, -- References courses.lessons(lesson_id)
     title TEXT NOT NULL,
     description TEXT,
     instructions TEXT,
@@ -26,10 +35,13 @@ CREATE TABLE quizzes (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX idx_assessments_quizzes_course_id ON assessments.quizzes(course_id);
+CREATE INDEX idx_assessments_quizzes_lesson_id ON assessments.quizzes(lesson_id);
+
 -- Quiz questions
-CREATE TABLE quiz_questions (
+CREATE TABLE assessments.quiz_questions (
     question_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
+    quiz_id UUID NOT NULL REFERENCES assessments.quizzes(quiz_id) ON DELETE CASCADE,
     question_text TEXT NOT NULL,
     question_type TEXT NOT NULL CHECK (question_type IN ('single_choice', 'multiple_choice', 'true_false', 'short_answer', 'essay', 'code')),
     points INTEGER NOT NULL DEFAULT 5,
@@ -41,12 +53,14 @@ CREATE TABLE quiz_questions (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX idx_assessments_questions_quiz_id ON assessments.quiz_questions(quiz_id);
+
 -- Student quiz submissions
-CREATE TABLE quiz_submissions (
+CREATE TABLE assessments.quiz_submissions (
     submission_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    quiz_id UUID NOT NULL REFERENCES quizzes(quiz_id),
-    user_id UUID NOT NULL REFERENCES users(user_id),
-    enrollment_id UUID NOT NULL REFERENCES enrollments(enrollment_id),
+    quiz_id UUID NOT NULL REFERENCES assessments.quizzes(quiz_id),
+    user_id UUID NOT NULL, -- References auth.users(user_id)
+    enrollment_id UUID NOT NULL, -- References enrollments.enrollments(enrollment_id)
     attempt_number INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL CHECK (status IN ('in_progress', 'submitted', 'graded')),
     score DECIMAL(5,2) DEFAULT 0.00,
@@ -59,11 +73,15 @@ CREATE TABLE quiz_submissions (
     instructor_feedback TEXT
 );
 
+CREATE INDEX idx_assessments_submissions_quiz_id ON assessments.quiz_submissions(quiz_id);
+CREATE INDEX idx_assessments_submissions_user_id ON assessments.quiz_submissions(user_id);
+CREATE INDEX idx_assessments_submissions_enrollment_id ON assessments.quiz_submissions(enrollment_id);
+
 -- Individual question responses
-CREATE TABLE quiz_responses (
+CREATE TABLE assessments.quiz_responses (
     response_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    submission_id UUID NOT NULL REFERENCES quiz_submissions(submission_id) ON DELETE CASCADE,
-    question_id UUID NOT NULL REFERENCES quiz_questions(question_id),
+    submission_id UUID NOT NULL REFERENCES assessments.quiz_submissions(submission_id) ON DELETE CASCADE,
+    question_id UUID NOT NULL REFERENCES assessments.quiz_questions(question_id),
     answer_data JSONB NOT NULL,
     is_correct BOOLEAN,
     points_earned DECIMAL(5,2) NOT NULL DEFAULT 0.00,
@@ -72,9 +90,9 @@ CREATE TABLE quiz_responses (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Performance indexes
-CREATE INDEX idx_quizzes_course_id ON quizzes(course_id);
-CREATE INDEX idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
-CREATE INDEX idx_quiz_submissions_user_id ON quiz_submissions(user_id);
-CREATE INDEX idx_quiz_submissions_quiz_id ON quiz_submissions(quiz_id);
-CREATE INDEX idx_quiz_responses_submission_id ON quiz_responses(submission_id);
+CREATE INDEX idx_assessments_responses_submission_id ON assessments.quiz_responses(submission_id);
+
+-- Triggers
+CREATE TRIGGER assessments_quizzes_updated_at
+    BEFORE UPDATE ON assessments.quizzes
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
