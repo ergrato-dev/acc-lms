@@ -4,6 +4,8 @@
 # Multi-stage build for optimized production images
 # Stages: chef → planner → builder → development → production
 #
+# Rust Version: 1.85 (see ADR-001 in _docs/development/development-standards.md)
+#
 # Build args:
 #   SERVICE_NAME - Name of the service to build (auth, users, courses, etc.)
 #
@@ -15,7 +17,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Chef - Prepare cargo-chef for dependency caching
 # -----------------------------------------------------------------------------
-FROM rust:1-slim-bookworm AS chef
+FROM rust:1.85-slim-bookworm AS chef
 
 RUN apt-get update && apt-get install -y \
     pkg-config \

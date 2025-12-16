@@ -17,12 +17,13 @@ members = [
     "notifications-service",
     "analytics-service",
     "chatbot-service",
+    "content-service",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 authors = ["ACC LMS Team"]
 license = "MIT"
 repository = "https://github.com/ergrato-dev/acc-lms"

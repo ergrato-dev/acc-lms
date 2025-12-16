@@ -12,7 +12,7 @@
 | Capa              | Tecnología                                  | Versión              |
 | ----------------- | ------------------------------------------- | -------------------- |
 | **Frontend**      | React 19 + Vite + TypeScript + Tailwind CSS | React 19.x, Vite 6.x |
-| **Backend**       | Rust + Actix-web/Axum                       | Rust 1.75+           |
+| **Backend**       | Rust + Actix-web/Axum                       | Rust 1.85            |
 | **Base de Datos** | PostgreSQL                                  | 16.x                 |
 | **Cache**         | Redis                                       | 7.x                  |
 | **API Gateway**   | Traefik                                     | 3.x                  |
@@ -111,7 +111,7 @@ cargo update                   # Actualizar dependencias
 name = "acc-lms-api"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
+rust-version = "1.85"
 
 [dependencies]
 actix-web = "4"
@@ -283,7 +283,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ```dockerfile
 # Build stage
-FROM rust:1.75-alpine AS builder
+FROM rust:1.85-alpine AS builder
 
 RUN apk add --no-cache musl-dev openssl-dev pkgconfig
 
@@ -528,6 +528,115 @@ pub async fn crear_notificacion(&self, usuario_id: Uuid) -> Result<Notificacion>
     // Verificar si el usuario tiene notificaciones habilitadas
 }
 ```
+
+---
+
+## 📝 Registro de Decisiones Arquitectónicas (ADR)
+
+### ADR-001: Versión de Rust Unificada
+
+**Fecha:** 2025-12-16
+**Estado:** Aceptada
+**Decisión:** Rust 1.85 como versión mínima obligatoria
+
+#### Contexto
+
+El proyecto necesita una versión de Rust estable que:
+- Soporte todas las dependencias del ecosistema actual
+- Sea compatible con las features de edition 2021
+- Permita compilación determinista en CI/CD
+
+#### Problema
+
+Inicialmente se definió Rust 1.75, pero algunas dependencias transitivas (como `home 0.5.12`) comenzaron a requerir soporte para `edition2024`, disponible solo en Rust 1.85+.
+
+#### Decisión
+
+**Usar Rust 1.85 como versión mínima** para todo el workspace.
+
+#### Justificación
+
+1. **Compatibilidad**: Rust 1.85 soporta edition2024 requerido por dependencias modernas
+2. **Estabilidad**: Es una versión stable release (no nightly)
+3. **Soporte**: Tendrá soporte de seguridad por al menos 12 meses
+4. **Features**: Incluye mejoras de compilación y diagnósticos
+
+#### Consecuencias
+
+- ✅ Todas las dependencias actuales compilan correctamente
+- ✅ CI/CD usará imagen `rust:1.85-alpine`
+- ✅ Desarrolladores deben tener Rust >= 1.85 instalado
+- ⚠️ Actualizar rustup si se tiene versión anterior: `rustup update stable`
+
+#### Actualización de Versión
+
+Para actualizar la versión de Rust en el futuro:
+
+1. Modificar `rust-version` en `be/Cargo.toml`
+2. Actualizar imagen Docker en este documento y Dockerfiles
+3. Verificar compilación: `cargo check --workspace`
+4. Actualizar este ADR con la nueva versión y fecha
+
+---
+
+### ADR-002: Storage Híbrido para Contenido Multimedia
+
+**Fecha:** 2025-12-16
+**Estado:** Aceptada
+**Decisión:** LocalStorage por defecto + trait para migración futura a S3/MinIO
+
+#### Contexto
+
+El content-service necesita almacenar archivos multimedia (videos, imágenes, documentos). La documentación inicial especificaba MinIO/S3, pero esto implica costos de infraestructura.
+
+#### Problema
+
+- MinIO requiere servidor dedicado o cluster
+- AWS S3 tiene costos por almacenamiento y transferencia
+- Para desarrollo y MVP, estos costos no están justificados
+
+#### Decisión
+
+**Implementar patrón Strategy con LocalStorage como default**:
+
+```rust
+#[async_trait]
+pub trait StorageBackend: Send + Sync {
+    async fn upload(&self, key: &str, data: Bytes) -> Result<StoredFileInfo>;
+    async fn download(&self, key: &str) -> Result<Bytes>;
+    async fn delete(&self, key: &str) -> Result<()>;
+    // ... otros métodos
+}
+
+// Implementaciones:
+// - LocalStorage (actual)
+// - S3Storage (futuro)
+// - MinIOStorage (futuro)
+```
+
+#### Justificación
+
+1. **Costo cero** para desarrollo y producción inicial
+2. **Funciona en cualquier VPS** sin servicios adicionales
+3. **Migración transparente**: Solo cambiar implementación del trait
+4. **Testing simplificado**: No requiere mocks de servicios externos
+
+#### Consecuencias
+
+- ✅ Desarrollo local sin dependencias externas
+- ✅ Producción low-budget viable en VPS básico
+- ✅ Path claro de migración cuando escale
+- ⚠️ Backup manual de archivos (o script de rsync)
+- ⚠️ Sin CDN integrado (agregar Cloudflare si es necesario)
+
+#### Migración Futura
+
+Cuando se requiera S3/MinIO:
+
+1. Implementar `S3Storage` con el trait existente
+2. Cambiar `STORAGE_TYPE=s3` en variables de entorno
+3. Migrar archivos existentes con script
+4. No requiere cambios en API ni frontend
 
 ---
 
