@@ -1,0 +1,33 @@
+[package]
+name = "chatbot-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "chatbot"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+actix-web.workspace = true
+actix-cors.workspace = true
+actix-ws = "0.3"
+tokio.workspace = true
+tokio-stream = "0.1"
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+config.workspace = true
+thiserror.workspace = true
+validator.workspace = true
+async-trait = "0.1"
+dotenvy.workspace = true
+sqlx.workspace = true
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+reqwest = { version = "0.12", features = ["json"] }
+async-openai = "0.25"
+futures-util = "0.3"
