@@ -20,8 +20,10 @@ impl CouponRepository {
 
     /// Create a new coupon
     pub async fn create_coupon(&self, coupon: &Coupon) -> Result<(), sqlx::Error> {
-        let applies_to_plans: Option<Vec<String>> = coupon.applies_to_plans.as_ref().map(|v| {
-            v.iter().map(|u| u.to_string()).collect()
+        let applies_to_plans: Option<Vec<String>> = coupon.applies_to_plans.as_ref().and_then(|v| {
+            v.as_array().map(|arr| {
+                arr.iter().filter_map(|u| u.as_str().map(|s| s.to_string())).collect()
+            })
         });
 
         sqlx::query(

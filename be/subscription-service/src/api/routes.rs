@@ -34,16 +34,15 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             // Invoices (authenticated)
             .service(
                 web::scope("/invoices")
-                    .route("", web::get().to(handlers::get_my_invoices))
+                    .route("", web::get().to(handlers::list_invoices))
                     .route("/{invoice_id}", web::get().to(handlers::get_invoice))
             )
 
             // Payment Methods (authenticated)
             .service(
                 web::scope("/payment-methods")
-                    .route("", web::get().to(handlers::get_payment_methods))
+                    .route("", web::get().to(handlers::list_payment_methods))
                     .route("", web::post().to(handlers::add_payment_method))
-                    .route("/default", web::put().to(handlers::set_default_payment_method))
                     .route("/{payment_method_id}", web::delete().to(handlers::delete_payment_method))
             )
 
@@ -59,11 +58,10 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/usage")
                     .route("", web::post().to(handlers::record_usage))
-                    .route("/{subscription_id}/summary", web::get().to(handlers::get_usage_summary))
             )
 
             // Billing Events
-            .route("/billing-events", web::get().to(handlers::get_billing_events))
+            .route("/billing-events", web::get().to(handlers::list_billing_events))
 
             // Stripe Webhook
             .route("/webhooks/stripe", web::post().to(handlers::stripe_webhook))
