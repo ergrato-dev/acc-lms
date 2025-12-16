@@ -1,6 +1,6 @@
 # Estándares de Desarrollo - ACC LMS
 
-**Versión:** 2025-12-14  
+**Versión:** 2025-12-14
 **Stack:** React 19 (Frontend) + Rust REST API (Backend)
 
 ---
@@ -478,5 +478,58 @@ fi
 
 ---
 
-**Última actualización**: Diciembre 2025  
+## 🌐 Convenciones de Idioma
+
+### Código Fuente
+
+| Elemento | Idioma | Ejemplo |
+|----------|--------|---------|
+| Nombres de variables, funciones, structs | **Inglés** | `NotificationStatus`, `create_template()` |
+| Doc comments (`///`, `//!`) | **Inglés** | `/// Creates a new repository instance.` |
+| Comentarios inline (`//`) | **Inglés** | `// Crosses midnight` |
+| Mensajes de error en código | **Inglés** | `"Entity not found: {}"` |
+| Nombres de archivos de código | **Inglés** | `notification_repository.rs` |
+
+### Documentación y Comunicación
+
+| Elemento | Idioma | Ejemplo |
+|----------|--------|---------|
+| Documentación en `_docs/` | **Español** | `desarrollo-standards.md` |
+| README.md del proyecto | **Español** | Descripciones generales |
+| Commits y PRs | **Inglés** | `feat(backend): implement notifications-service` |
+| Issues de GitHub | **Español** | Descripción de bugs/features |
+
+### Justificación
+
+- **Código en inglés**: Estándar de la industria, facilita colaboración internacional y uso de herramientas
+- **Documentación en español**: Equipo hispanohablante, reduce barreras de comprensión
+- **Commits en inglés**: Convención estándar, compatibilidad con herramientas de changelog
+
+### Ejemplos
+
+#### ✅ Correcto (Rust)
+```rust
+/// Creates a new notification and queues it for delivery.
+///
+/// # Arguments
+/// * `user_id` - The recipient user ID
+/// * `template` - The notification template to use
+pub async fn create_notification(&self, user_id: Uuid, template: &str) -> Result<Notification> {
+    // Check if user has notifications enabled
+    let settings = self.get_user_settings(user_id).await?;
+    // ...
+}
+```
+
+#### ❌ Incorrecto
+```rust
+/// Crea una nueva notificación y la encola para envío.
+pub async fn crear_notificacion(&self, usuario_id: Uuid) -> Result<Notificacion> {
+    // Verificar si el usuario tiene notificaciones habilitadas
+}
+```
+
+---
+
+**Última actualización**: Diciembre 2025
 **Mantenedor**: Tech Lead Team
