@@ -1,0 +1,58 @@
+# =============================================================================
+# ACC LMS - Knowledge Base Service
+# =============================================================================
+# Servicio de base de conocimiento para artículos de ayuda y FAQ
+# Puerto: 8091
+# =============================================================================
+
+[package]
+name = "kb-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kb"
+path = "src/main.rs"
+
+[dependencies]
+# Shared library
+shared = { path = "../shared" }
+
+# Web framework
+actix-web = { workspace = true }
+actix-rt = { workspace = true }
+actix-cors = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+validator = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Markdown processing
+pulldown-cmark = "0.12"
+
+# Slug generation
+slug = "0.1"
+
+# Text search
+regex = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"

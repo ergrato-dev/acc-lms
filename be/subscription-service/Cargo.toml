@@ -1,0 +1,80 @@
+# =============================================================================
+# ACC LMS - Subscription Service
+# =============================================================================
+# Gestión de planes de suscripción y billing recurrente
+# Puerto: 8092
+# =============================================================================
+
+[package]
+name = "subscription-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Subscription management service for ACC LMS - billing recurrente, planes, lifecycle"
+
+[[bin]]
+name = "subscription"
+path = "src/main.rs"
+
+[dependencies]
+# Internal
+shared = { path = "../shared" }
+
+# Web framework
+actix-web.workspace = true
+actix-rt.workspace = true
+actix-cors.workspace = true
+
+# Async
+tokio.workspace = true
+async-trait.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Validation
+validator.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Tracing
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-actix-web.workspace = true
+
+# Types
+uuid.workspace = true
+chrono.workspace = true
+
+# Random
+rand = "0.8"
+
+# Config
+config.workspace = true
+dotenvy.workspace = true
+
+# Redis
+redis.workspace = true
+
+# HTTP client (para webhooks y provider APIs)
+reqwest.workspace = true
+
+# Stripe SDK (billing provider)
+# stripe = "0.28"
+
+# Cron expressions para billing cycles
+cron = "0.12"
+
+[dev-dependencies]
+mockall.workspace = true
+fake.workspace = true
+wiremock.workspace = true

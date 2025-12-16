@@ -68,6 +68,42 @@ BEGIN
         DROP OWNED BY notifications_svc CASCADE;
         DROP USER notifications_svc;
     END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'analytics_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM analytics_svc;
+        DROP OWNED BY analytics_svc CASCADE;
+        DROP USER analytics_svc;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'chatbot_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM chatbot_svc;
+        DROP OWNED BY chatbot_svc CASCADE;
+        DROP USER chatbot_svc;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'content_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM content_svc;
+        DROP OWNED BY content_svc CASCADE;
+        DROP USER content_svc;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'compliance_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM compliance_svc;
+        DROP OWNED BY compliance_svc CASCADE;
+        DROP USER compliance_svc;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kb_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM kb_svc;
+        DROP OWNED BY kb_svc CASCADE;
+        DROP USER kb_svc;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'subscriptions_svc') THEN
+        REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM subscriptions_svc;
+        DROP OWNED BY subscriptions_svc CASCADE;
+        DROP USER subscriptions_svc;
+    END IF;
 END $$;
 
 -- ========================================
@@ -106,6 +142,30 @@ COMMENT ON SCHEMA ai IS 'AI domain: embeddings, conversations, AI-powered featur
 CREATE SCHEMA IF NOT EXISTS notifications;
 COMMENT ON SCHEMA notifications IS 'Notifications domain: templates, delivery queue';
 
+-- Analytics schema: events, metrics, dashboards
+CREATE SCHEMA IF NOT EXISTS analytics;
+COMMENT ON SCHEMA analytics IS 'Analytics domain: events, metrics, reporting';
+
+-- Chatbot schema: conversations, messages, AI interactions
+CREATE SCHEMA IF NOT EXISTS chatbot;
+COMMENT ON SCHEMA chatbot IS 'Chatbot domain: AI conversations, messages';
+
+-- Content schema: media, files, assets management
+CREATE SCHEMA IF NOT EXISTS content;
+COMMENT ON SCHEMA content IS 'Content domain: media files, assets, storage';
+
+-- Compliance schema: GDPR, data rights, consent management
+CREATE SCHEMA IF NOT EXISTS compliance;
+COMMENT ON SCHEMA compliance IS 'Compliance domain: GDPR, CCPA, data rights, consent';
+
+-- Knowledge Base schema: articles, FAQs, documentation
+CREATE SCHEMA IF NOT EXISTS kb;
+COMMENT ON SCHEMA kb IS 'Knowledge Base domain: help articles, FAQs, docs';
+
+-- Subscriptions schema: plans, billing, invoices
+CREATE SCHEMA IF NOT EXISTS subscriptions;
+COMMENT ON SCHEMA subscriptions IS 'Subscriptions domain: plans, billing, invoices, usage';
+
 -- ========================================
 -- CREATE SERVICE USERS
 -- ========================================
@@ -119,6 +179,12 @@ CREATE USER assessments_svc WITH PASSWORD 'assessments_svc_dev_password';
 CREATE USER payments_svc WITH PASSWORD 'payments_svc_dev_password';
 CREATE USER ai_svc WITH PASSWORD 'ai_svc_dev_password';
 CREATE USER notifications_svc WITH PASSWORD 'notifications_svc_dev_password';
+CREATE USER analytics_svc WITH PASSWORD 'analytics_svc_dev_password';
+CREATE USER chatbot_svc WITH PASSWORD 'chatbot_svc_dev_password';
+CREATE USER content_svc WITH PASSWORD 'content_svc_dev_password';
+CREATE USER compliance_svc WITH PASSWORD 'compliance_svc_dev_password';
+CREATE USER kb_svc WITH PASSWORD 'kb_svc_dev_password';
+CREATE USER subscriptions_svc WITH PASSWORD 'subscriptions_svc_dev_password';
 
 -- ========================================
 -- GRANT SCHEMA PERMISSIONS
@@ -195,13 +261,58 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA notifications TO notifications_s
 ALTER DEFAULT PRIVILEGES IN SCHEMA notifications GRANT ALL ON TABLES TO notifications_svc;
 ALTER DEFAULT PRIVILEGES IN SCHEMA notifications GRANT ALL ON SEQUENCES TO notifications_svc;
 
+-- Analytics service: full access to analytics
+GRANT USAGE ON SCHEMA analytics TO analytics_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics TO analytics_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA analytics TO analytics_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT ALL ON TABLES TO analytics_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT ALL ON SEQUENCES TO analytics_svc;
+
+-- Chatbot service: full access to chatbot schema
+GRANT USAGE ON SCHEMA chatbot TO chatbot_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA chatbot TO chatbot_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA chatbot TO chatbot_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chatbot GRANT ALL ON TABLES TO chatbot_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA chatbot GRANT ALL ON SEQUENCES TO chatbot_svc;
+-- Read access to courses for context
+GRANT USAGE ON SCHEMA courses TO chatbot_svc;
+GRANT SELECT ON ALL TABLES IN SCHEMA courses TO chatbot_svc;
+
+-- Content service: full access to content schema
+GRANT USAGE ON SCHEMA content TO content_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA content TO content_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA content TO content_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA content GRANT ALL ON TABLES TO content_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA content GRANT ALL ON SEQUENCES TO content_svc;
+
+-- Compliance service: full access to compliance schema
+GRANT USAGE ON SCHEMA compliance TO compliance_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA compliance TO compliance_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA compliance TO compliance_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA compliance GRANT ALL ON TABLES TO compliance_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA compliance GRANT ALL ON SEQUENCES TO compliance_svc;
+
+-- Knowledge Base service: full access to kb schema
+GRANT USAGE ON SCHEMA kb TO kb_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA kb TO kb_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA kb TO kb_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA kb GRANT ALL ON TABLES TO kb_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA kb GRANT ALL ON SEQUENCES TO kb_svc;
+
+-- Subscriptions service: full access to subscriptions schema
+GRANT USAGE ON SCHEMA subscriptions TO subscriptions_svc;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA subscriptions TO subscriptions_svc;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA subscriptions TO subscriptions_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA subscriptions GRANT ALL ON TABLES TO subscriptions_svc;
+ALTER DEFAULT PRIVILEGES IN SCHEMA subscriptions GRANT ALL ON SEQUENCES TO subscriptions_svc;
+
 -- ========================================
 -- SECURITY HARDENING
 -- ========================================
 
 -- Revoke public schema access (prevent accidental use)
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA public FROM auth_svc, users_svc, courses_svc, enrollments_svc, assessments_svc, payments_svc, ai_svc, notifications_svc;
+REVOKE ALL ON SCHEMA public FROM auth_svc, users_svc, courses_svc, enrollments_svc, assessments_svc, payments_svc, ai_svc, notifications_svc, analytics_svc, chatbot_svc, content_svc, compliance_svc, kb_svc, subscriptions_svc;
 
 -- Ensure service users cannot create databases or roles
 ALTER USER auth_svc NOCREATEDB NOCREATEROLE;
@@ -212,6 +323,12 @@ ALTER USER assessments_svc NOCREATEDB NOCREATEROLE;
 ALTER USER payments_svc NOCREATEDB NOCREATEROLE;
 ALTER USER ai_svc NOCREATEDB NOCREATEROLE;
 ALTER USER notifications_svc NOCREATEDB NOCREATEROLE;
+ALTER USER analytics_svc NOCREATEDB NOCREATEROLE;
+ALTER USER chatbot_svc NOCREATEDB NOCREATEROLE;
+ALTER USER content_svc NOCREATEDB NOCREATEROLE;
+ALTER USER compliance_svc NOCREATEDB NOCREATEROLE;
+ALTER USER kb_svc NOCREATEDB NOCREATEROLE;
+ALTER USER subscriptions_svc NOCREATEDB NOCREATEROLE;
 
 -- Set connection limits per service user (prevent resource exhaustion)
 ALTER USER auth_svc CONNECTION LIMIT 20;
@@ -222,6 +339,12 @@ ALTER USER assessments_svc CONNECTION LIMIT 20;
 ALTER USER payments_svc CONNECTION LIMIT 20;
 ALTER USER ai_svc CONNECTION LIMIT 20;
 ALTER USER notifications_svc CONNECTION LIMIT 20;
+ALTER USER analytics_svc CONNECTION LIMIT 20;
+ALTER USER chatbot_svc CONNECTION LIMIT 20;
+ALTER USER content_svc CONNECTION LIMIT 20;
+ALTER USER compliance_svc CONNECTION LIMIT 20;
+ALTER USER kb_svc CONNECTION LIMIT 20;
+ALTER USER subscriptions_svc CONNECTION LIMIT 20;
 
 -- ========================================
 -- CROSS-SCHEMA REFERENCES (Minimal)
@@ -248,7 +371,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Grant execute to all service users
-GRANT EXECUTE ON FUNCTION update_updated_at_column() TO auth_svc, users_svc, courses_svc, enrollments_svc, assessments_svc, payments_svc, ai_svc, notifications_svc;
+GRANT EXECUTE ON FUNCTION update_updated_at_column() TO auth_svc, users_svc, courses_svc, enrollments_svc, assessments_svc, payments_svc, ai_svc, notifications_svc, analytics_svc, chatbot_svc, content_svc, compliance_svc, kb_svc, subscriptions_svc;
 
 -- ========================================
 -- VERIFICATION QUERIES

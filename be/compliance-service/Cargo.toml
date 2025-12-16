@@ -1,0 +1,27 @@
+[package]
+name = "compliance-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "compliance"
+path = "src/main.rs"
+
+[dependencies]
+shared = { path = "../shared" }
+actix-web.workspace = true
+actix-cors.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+config.workspace = true
+thiserror.workspace = true
+validator.workspace = true
+dotenvy.workspace = true
+sqlx.workspace = true
+async-trait = "0.1"

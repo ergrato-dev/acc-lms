@@ -5,8 +5,11 @@
 -- Soporta multi-tenancy y múltiples backends de storage
 -- =============================================================================
 
--- Tipos enum para content
-CREATE TYPE content_type AS ENUM (
+-- Set search path to content schema
+SET search_path TO content, public;
+
+-- Tipos enum para content (in content schema)
+CREATE TYPE content.asset_type AS ENUM (
     'video',
     'image',
     'document',
@@ -15,7 +18,7 @@ CREATE TYPE content_type AS ENUM (
     'attachment'
 );
 
-CREATE TYPE processing_status AS ENUM (
+CREATE TYPE content.processing_status AS ENUM (
     'pending',
     'uploading',
     'processing',
@@ -28,7 +31,7 @@ CREATE TYPE processing_status AS ENUM (
 -- =============================================================================
 -- Tabla principal de assets
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS content_assets (
+CREATE TABLE IF NOT EXISTS content.assets (
     asset_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     -- Ownership
@@ -53,7 +56,7 @@ CREATE TABLE IF NOT EXISTS content_assets (
 
     -- Classification
     asset_type content_type NOT NULL DEFAULT 'attachment',
-    status processing_status NOT NULL DEFAULT 'pending',
+    status content.processing_status NOT NULL DEFAULT 'pending',
 
     -- Metadata (JSON flexible)
     metadata JSONB DEFAULT '{}',
@@ -72,9 +75,9 @@ CREATE TABLE IF NOT EXISTS content_assets (
 -- =============================================================================
 -- Tabla para variantes de video (múltiples calidades)
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS video_variants (
+CREATE TABLE IF NOT EXISTS content.video_variants (
     variant_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_id UUID NOT NULL REFERENCES content_assets(asset_id) ON DELETE CASCADE,
+    asset_id UUID NOT NULL REFERENCES content.assets(asset_id) ON DELETE CASCADE,
 
     -- Variant info
     quality VARCHAR(50) NOT NULL, -- 1080p, 720p, 480p, 360p
@@ -99,9 +102,9 @@ CREATE TABLE IF NOT EXISTS video_variants (
 -- =============================================================================
 -- Tabla para thumbnails generados
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS asset_thumbnails (
+CREATE TABLE IF NOT EXISTS content.thumbnails (
     thumbnail_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_id UUID NOT NULL REFERENCES content_assets(asset_id) ON DELETE CASCADE,
+    asset_id UUID NOT NULL REFERENCES content.assets(asset_id) ON DELETE CASCADE,
 
     -- Thumbnail info
     thumbnail_type VARCHAR(50) NOT NULL, -- small, medium, large, poster
@@ -122,9 +125,9 @@ CREATE TABLE IF NOT EXISTS asset_thumbnails (
 -- =============================================================================
 -- Tabla para transcripciones de video/audio
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS asset_transcriptions (
+CREATE TABLE IF NOT EXISTS content.transcriptions (
     transcription_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_id UUID NOT NULL REFERENCES content_assets(asset_id) ON DELETE CASCADE,
+    asset_id UUID NOT NULL REFERENCES content.assets(asset_id) ON DELETE CASCADE,
 
     -- Transcription info
     language VARCHAR(10) NOT NULL, -- es, en, pt, etc.
@@ -144,9 +147,9 @@ CREATE TABLE IF NOT EXISTS asset_transcriptions (
 -- =============================================================================
 -- Tabla para tokens de acceso temporal
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS asset_access_tokens (
+CREATE TABLE IF NOT EXISTS content.access_tokens (
     token_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_id UUID NOT NULL REFERENCES content_assets(asset_id) ON DELETE CASCADE,
+    asset_id UUID NOT NULL REFERENCES content.assets(asset_id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
 
     -- Token info
@@ -172,9 +175,9 @@ CREATE TABLE IF NOT EXISTS asset_access_tokens (
 -- =============================================================================
 -- Tabla para estadísticas de uso
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS asset_usage_stats (
+CREATE TABLE IF NOT EXISTS content.usage_stats (
     stat_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    asset_id UUID NOT NULL REFERENCES content_assets(asset_id) ON DELETE CASCADE,
+    asset_id UUID NOT NULL REFERENCES content.assets(asset_id) ON DELETE CASCADE,
 
     -- Stats by period
     period_start DATE NOT NULL,
@@ -198,42 +201,42 @@ CREATE TABLE IF NOT EXISTS asset_usage_stats (
 -- =============================================================================
 
 -- Assets
-CREATE INDEX idx_content_assets_owner ON content_assets(owner_id);
-CREATE INDEX idx_content_assets_tenant ON content_assets(tenant_id);
-CREATE INDEX idx_content_assets_course ON content_assets(course_id);
-CREATE INDEX idx_content_assets_lesson ON content_assets(lesson_id);
-CREATE INDEX idx_content_assets_status ON content_assets(status);
-CREATE INDEX idx_content_assets_type ON content_assets(asset_type);
-CREATE INDEX idx_content_assets_storage_key ON content_assets(storage_key);
-CREATE INDEX idx_content_assets_created ON content_assets(created_at DESC);
-CREATE INDEX idx_content_assets_filename ON content_assets(filename);
-CREATE INDEX idx_content_assets_deleted ON content_assets(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX idx_content_assets_owner ON content.assets(owner_id);
+CREATE INDEX idx_content_assets_tenant ON content.assets(tenant_id);
+CREATE INDEX idx_content_assets_course ON content.assets(course_id);
+CREATE INDEX idx_content_assets_lesson ON content.assets(lesson_id);
+CREATE INDEX idx_content_assets_status ON content.assets(status);
+CREATE INDEX idx_content_assets_type ON content.assets(asset_type);
+CREATE INDEX idx_content_assets_storage_key ON content.assets(storage_key);
+CREATE INDEX idx_content_assets_created ON content.assets(created_at DESC);
+CREATE INDEX idx_content_assets_filename ON content.assets(filename);
+CREATE INDEX idx_content_assets_deleted ON content.assets(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- Full text search on filename
-CREATE INDEX idx_content_assets_filename_search ON content_assets USING gin(to_tsvector('spanish', filename));
+CREATE INDEX idx_content_assets_filename_search ON content.assets USING gin(to_tsvector('spanish', filename));
 
 -- JSONB metadata
-CREATE INDEX idx_content_assets_metadata ON content_assets USING gin(metadata);
+CREATE INDEX idx_content_assets_metadata ON content.assets USING gin(metadata);
 
 -- Variants
-CREATE INDEX idx_video_variants_asset ON video_variants(asset_id);
-CREATE INDEX idx_video_variants_ready ON video_variants(asset_id) WHERE is_ready = TRUE;
+CREATE INDEX idx_video_variants_asset ON content.video_variants(asset_id);
+CREATE INDEX idx_video_variants_ready ON content.video_variants(asset_id) WHERE is_ready = TRUE;
 
 -- Thumbnails
-CREATE INDEX idx_asset_thumbnails_asset ON asset_thumbnails(asset_id);
+CREATE INDEX idx_asset_thumbnails_asset ON content.thumbnails(asset_id);
 
 -- Transcriptions
-CREATE INDEX idx_asset_transcriptions_asset ON asset_transcriptions(asset_id);
-CREATE INDEX idx_asset_transcriptions_language ON asset_transcriptions(language);
+CREATE INDEX idx_asset_transcriptions_asset ON content.transcriptions(asset_id);
+CREATE INDEX idx_asset_transcriptions_language ON content.transcriptions(language);
 
 -- Access tokens
-CREATE INDEX idx_asset_access_tokens_asset ON asset_access_tokens(asset_id);
-CREATE INDEX idx_asset_access_tokens_expires ON asset_access_tokens(expires_at);
-CREATE INDEX idx_asset_access_tokens_hash ON asset_access_tokens(token_hash);
+CREATE INDEX idx_asset_access_tokens_asset ON content.access_tokens(asset_id);
+CREATE INDEX idx_asset_access_tokens_expires ON content.access_tokens(expires_at);
+CREATE INDEX idx_asset_access_tokens_hash ON content.access_tokens(token_hash);
 
 -- Usage stats
-CREATE INDEX idx_asset_usage_stats_asset ON asset_usage_stats(asset_id);
-CREATE INDEX idx_asset_usage_stats_period ON asset_usage_stats(period_start, period_type);
+CREATE INDEX idx_asset_usage_stats_asset ON content.usage_stats(asset_id);
+CREATE INDEX idx_asset_usage_stats_period ON content.usage_stats(period_start, period_type);
 
 -- =============================================================================
 -- Triggers
@@ -241,7 +244,7 @@ CREATE INDEX idx_asset_usage_stats_period ON asset_usage_stats(period_start, per
 
 -- Updated at trigger
 CREATE TRIGGER update_content_assets_updated_at
-    BEFORE UPDATE ON content_assets
+    BEFORE UPDATE ON content.assets
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 

@@ -18,6 +18,9 @@ members = [
     "analytics-service",
     "chatbot-service",
     "content-service",
+    "compliance-service",
+    "kb-service",
+    "subscription-service",
 ]
 
 [workspace.package]
@@ -65,6 +68,9 @@ validator = { version = "0.18", features = ["derive"] }
 # Error handling
 thiserror = "1"
 anyhow = "1"
+
+# Async utilities
+async-trait = "0.1"
 
 # Tracing & Logging
 tracing = "0.1"
