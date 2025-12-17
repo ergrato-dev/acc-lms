@@ -22,6 +22,7 @@ members = [
     "kb-service",
     "subscription-service",
     "ai-service",
+    "grades-service",
 ]
 
 [workspace.package]
