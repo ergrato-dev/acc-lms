@@ -23,6 +23,7 @@ members = [
     "subscription-service",
     "ai-service",
     "grades-service",
+    "search-service",
 ]
 
 [workspace.package]
