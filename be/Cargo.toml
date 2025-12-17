@@ -21,6 +21,7 @@ members = [
     "compliance-service",
     "kb-service",
     "subscription-service",
+    "ai-service",
 ]
 
 [workspace.package]
