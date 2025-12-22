@@ -26,6 +26,7 @@ members = [
     "search-service",
     "reviews-service",
     "wishlist-service",
+    "messaging-service",
 ]
 
 [workspace.package]

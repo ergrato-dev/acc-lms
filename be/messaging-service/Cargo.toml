@@ -1,0 +1,72 @@
+# =============================================================================
+# Messaging Service - Chat entre usuarios (RF-STU-021)
+# =============================================================================
+
+[package]
+name = "messaging-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Messaging service for user-to-user communication"
+
+[dependencies]
+# Shared library
+shared = { path = "../shared" }
+
+# Web framework
+actix-web.workspace = true
+actix-rt.workspace = true
+actix-cors.workspace = true
+
+# WebSocket support
+actix-ws = "0.3"
+actix = "0.13"
+
+# Async runtime
+tokio = { workspace = true, features = ["full", "sync"] }
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Cache & Pub/Sub
+redis = { workspace = true, features = ["tokio-comp", "aio"] }
+
+# Authentication
+jsonwebtoken.workspace = true
+
+# Validation
+validator.workspace = true
+
+# Error handling
+thiserror.workspace = true
+anyhow.workspace = true
+
+# Async utilities
+async-trait.workspace = true
+futures = "0.3"
+
+# Tracing
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-actix-web.workspace = true
+
+# Date/time
+chrono.workspace = true
+
+# UUID
+uuid.workspace = true
+
+# Configuration
+config.workspace = true
+dotenvy.workspace = true
+
+[[bin]]
+name = "messaging"
+path = "src/main.rs"
