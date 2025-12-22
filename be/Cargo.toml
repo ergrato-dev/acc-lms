@@ -25,6 +25,7 @@ members = [
     "grades-service",
     "search-service",
     "reviews-service",
+    "wishlist-service",
 ]
 
 [workspace.package]

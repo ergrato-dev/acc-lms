@@ -1,0 +1,55 @@
+# =============================================================================
+# Wishlist Service - Lista de Deseos
+# =============================================================================
+# RF-STU-005: Lista de deseos
+# - Agregar/eliminar cursos de lista de deseos
+# - Ver lista de deseos
+# =============================================================================
+
+[package]
+name = "wishlist-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Service for managing user wishlists"
+
+[[bin]]
+name = "wishlist"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+shared = { path = "../shared" }
+
+# Web framework
+actix-web.workspace = true
+actix-rt.workspace = true
+actix-cors.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Observability
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-actix-web.workspace = true
+
+# Utils
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+rust_decimal.workspace = true
+
+# Redis for caching
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
