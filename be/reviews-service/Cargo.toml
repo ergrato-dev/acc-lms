@@ -1,0 +1,55 @@
+# =============================================================================
+# Reviews Service - Valoraciones y Reseñas
+# =============================================================================
+# RF-STU-015: Sistema de valoraciones y reseñas
+# RF-ANON-003: Vista de reseñas en detalle de curso
+# =============================================================================
+
+[package]
+name = "reviews-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Service for course reviews and ratings"
+
+[[bin]]
+name = "reviews"
+path = "src/main.rs"
+
+[dependencies]
+# Workspace dependencies
+shared = { path = "../shared" }
+
+# Web framework
+actix-web.workspace = true
+actix-rt.workspace = true
+actix-cors.workspace = true
+
+# Async runtime
+tokio.workspace = true
+
+# Serialization
+serde.workspace = true
+serde_json.workspace = true
+
+# Database
+sqlx.workspace = true
+
+# Observability
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-actix-web.workspace = true
+
+# Utils
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+rust_decimal.workspace = true
+validator.workspace = true
+
+# Redis for caching
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }

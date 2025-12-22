@@ -24,6 +24,7 @@ members = [
     "ai-service",
     "grades-service",
     "search-service",
+    "reviews-service",
 ]
 
 [workspace.package]
@@ -58,6 +59,7 @@ sqlx = { version = "0.8", features = [
     "uuid",
     "chrono",
     "migrate",
+    "rust_decimal",
 ] }
 
 # Authentication & Security
@@ -83,6 +85,7 @@ tracing-actix-web = "0.7"
 # Types
 uuid = { version = "1", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = { version = "1", features = ["serde"] }
 
 # Config
 config = "0.14"
