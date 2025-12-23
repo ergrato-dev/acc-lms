@@ -1,0 +1,61 @@
+{
+  "not_found": {
+    "title": "Page not found",
+    "message": "The page you're looking for doesn't exist or has been moved.",
+    "back_home": "Back to home"
+  },
+  "server_error": {
+    "title": "Server error",
+    "message": "Something went wrong. We're working to fix it.",
+    "retry": "Try again"
+  },
+  "unauthorized": {
+    "title": "Access denied",
+    "message": "You don't have permission to view this page.",
+    "login": "Sign in"
+  },
+  "forbidden": {
+    "title": "Forbidden",
+    "message": "You don't have the required permissions to perform this action."
+  },
+  "network": {
+    "title": "Connection error",
+    "message": "Could not connect to the server. Check your internet connection.",
+    "retry": "Retry"
+  },
+  "session_expired": {
+    "title": "Session expired",
+    "message": "Your session has expired. Please sign in again.",
+    "login": "Sign in"
+  },
+  "maintenance": {
+    "title": "Under maintenance",
+    "message": "We're making improvements. We'll be back soon."
+  },
+  "form": {
+    "required": "This field is required",
+    "email_invalid": "Email address is invalid",
+    "password_min": "Password must be at least {{min}} characters",
+    "password_requirements": "Password must include uppercase, lowercase, numbers and symbols",
+    "passwords_mismatch": "Passwords do not match",
+    "file_too_large": "File is too large (maximum {{max}}MB)",
+    "file_type_invalid": "File type not allowed",
+    "url_invalid": "URL is invalid",
+    "phone_invalid": "Phone number is invalid",
+    "date_invalid": "Date is invalid",
+    "number_min": "Value must be greater than or equal to {{min}}",
+    "number_max": "Value must be less than or equal to {{max}}"
+  },
+  "api": {
+    "INVALID_CREDENTIALS": "Invalid credentials",
+    "EMAIL_EXISTS": "Email is already registered",
+    "USER_NOT_FOUND": "User not found",
+    "COURSE_NOT_FOUND": "Course not found",
+    "ENROLLMENT_EXISTS": "You're already enrolled in this course",
+    "PAYMENT_FAILED": "Payment processing error",
+    "RATE_LIMITED": "Too many requests. Please wait a moment.",
+    "VALIDATION_ERROR": "Validation error",
+    "INTERNAL_ERROR": "Internal server error",
+    "UNKNOWN": "An unexpected error occurred"
+  }
+}

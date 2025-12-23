@@ -1,0 +1,76 @@
+{
+  "title": "Finalizar Compra",
+  "order_summary": "Resumen del pedido",
+  "subtotal": "Subtotal",
+  "discount": "Descuento",
+  "tax": "Impuestos",
+  "total": "Total",
+  "coupon": {
+    "label": "Código de descuento",
+    "placeholder": "Ingresa tu código",
+    "apply": "Aplicar",
+    "applied": "Aplicado: {{code}}",
+    "remove": "Quitar",
+    "invalid": "Código inválido o expirado",
+    "success": "¡Descuento aplicado!"
+  },
+  "payment": {
+    "title": "Método de pago",
+    "card": "Tarjeta de crédito/débito",
+    "mercadopago": "MercadoPago",
+    "card_number": "Número de tarjeta",
+    "expiry": "Vencimiento",
+    "cvc": "CVC",
+    "name_on_card": "Nombre en la tarjeta",
+    "save_card": "Guardar tarjeta para futuras compras"
+  },
+  "billing": {
+    "title": "Información de facturación",
+    "same_as_profile": "Usar datos del perfil",
+    "name": "Nombre completo",
+    "email": "Correo electrónico",
+    "country": "País",
+    "address": "Dirección",
+    "city": "Ciudad",
+    "state": "Estado/Provincia",
+    "zip": "Código postal"
+  },
+  "actions": {
+    "complete_purchase": "Completar compra",
+    "processing": "Procesando...",
+    "back_to_cart": "Volver al carrito"
+  },
+  "cart": {
+    "title": "Tu carrito",
+    "empty": "Tu carrito está vacío",
+    "empty_hint": "Explora nuestros cursos y encuentra algo que te interese",
+    "browse_courses": "Explorar cursos",
+    "remove": "Quitar",
+    "item_count": "{{count}} artículo",
+    "item_count_plural": "{{count}} artículos",
+    "checkout": "Ir a pagar"
+  },
+  "success": {
+    "title": "¡Compra exitosa!",
+    "subtitle": "Gracias por tu compra",
+    "message": "Hemos enviado un recibo a {{email}}",
+    "order_number": "Número de orden: {{orderId}}",
+    "start_learning": "Comenzar a aprender",
+    "view_orders": "Ver mis compras"
+  },
+  "errors": {
+    "payment_failed": "El pago no pudo ser procesado",
+    "card_declined": "La tarjeta fue rechazada",
+    "insufficient_funds": "Fondos insuficientes",
+    "network_error": "Error de conexión. Por favor intenta de nuevo.",
+    "generic": "Ocurrió un error. Por favor intenta de nuevo."
+  },
+  "guarantee": {
+    "title": "Garantía de satisfacción",
+    "description": "30 días de garantía de devolución de dinero"
+  },
+  "secure": {
+    "title": "Pago seguro",
+    "description": "Tus datos están protegidos con encriptación SSL"
+  }
+}

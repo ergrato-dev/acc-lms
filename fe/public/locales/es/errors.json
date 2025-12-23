@@ -1,0 +1,61 @@
+{
+  "not_found": {
+    "title": "Página no encontrada",
+    "message": "La página que buscas no existe o ha sido movida.",
+    "back_home": "Volver al inicio"
+  },
+  "server_error": {
+    "title": "Error del servidor",
+    "message": "Algo salió mal. Estamos trabajando para solucionarlo.",
+    "retry": "Intentar de nuevo"
+  },
+  "unauthorized": {
+    "title": "Acceso denegado",
+    "message": "No tienes permiso para ver esta página.",
+    "login": "Iniciar sesión"
+  },
+  "forbidden": {
+    "title": "Acceso prohibido",
+    "message": "No tienes los permisos necesarios para realizar esta acción."
+  },
+  "network": {
+    "title": "Error de conexión",
+    "message": "No pudimos conectar con el servidor. Verifica tu conexión a internet.",
+    "retry": "Reintentar"
+  },
+  "session_expired": {
+    "title": "Sesión expirada",
+    "message": "Tu sesión ha expirado. Por favor inicia sesión nuevamente.",
+    "login": "Iniciar sesión"
+  },
+  "maintenance": {
+    "title": "En mantenimiento",
+    "message": "Estamos realizando mejoras. Volvemos pronto."
+  },
+  "form": {
+    "required": "Este campo es obligatorio",
+    "email_invalid": "El correo electrónico no es válido",
+    "password_min": "La contraseña debe tener al menos {{min}} caracteres",
+    "password_requirements": "La contraseña debe incluir mayúsculas, minúsculas, números y símbolos",
+    "passwords_mismatch": "Las contraseñas no coinciden",
+    "file_too_large": "El archivo es demasiado grande (máximo {{max}}MB)",
+    "file_type_invalid": "Tipo de archivo no permitido",
+    "url_invalid": "La URL no es válida",
+    "phone_invalid": "El número de teléfono no es válido",
+    "date_invalid": "La fecha no es válida",
+    "number_min": "El valor debe ser mayor o igual a {{min}}",
+    "number_max": "El valor debe ser menor o igual a {{max}}"
+  },
+  "api": {
+    "INVALID_CREDENTIALS": "Credenciales inválidas",
+    "EMAIL_EXISTS": "El correo ya está registrado",
+    "USER_NOT_FOUND": "Usuario no encontrado",
+    "COURSE_NOT_FOUND": "Curso no encontrado",
+    "ENROLLMENT_EXISTS": "Ya estás inscrito en este curso",
+    "PAYMENT_FAILED": "Error al procesar el pago",
+    "RATE_LIMITED": "Demasiadas solicitudes. Por favor espera un momento.",
+    "VALIDATION_ERROR": "Error de validación",
+    "INTERNAL_ERROR": "Error interno del servidor",
+    "UNKNOWN": "Ocurrió un error inesperado"
+  }
+}

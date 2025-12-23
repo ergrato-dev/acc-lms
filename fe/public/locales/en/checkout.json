@@ -1,0 +1,76 @@
+{
+  "title": "Checkout",
+  "order_summary": "Order summary",
+  "subtotal": "Subtotal",
+  "discount": "Discount",
+  "tax": "Tax",
+  "total": "Total",
+  "coupon": {
+    "label": "Discount code",
+    "placeholder": "Enter your code",
+    "apply": "Apply",
+    "applied": "Applied: {{code}}",
+    "remove": "Remove",
+    "invalid": "Invalid or expired code",
+    "success": "Discount applied!"
+  },
+  "payment": {
+    "title": "Payment method",
+    "card": "Credit/debit card",
+    "mercadopago": "MercadoPago",
+    "card_number": "Card number",
+    "expiry": "Expiry",
+    "cvc": "CVC",
+    "name_on_card": "Name on card",
+    "save_card": "Save card for future purchases"
+  },
+  "billing": {
+    "title": "Billing information",
+    "same_as_profile": "Use profile information",
+    "name": "Full name",
+    "email": "Email",
+    "country": "Country",
+    "address": "Address",
+    "city": "City",
+    "state": "State/Province",
+    "zip": "Postal code"
+  },
+  "actions": {
+    "complete_purchase": "Complete purchase",
+    "processing": "Processing...",
+    "back_to_cart": "Back to cart"
+  },
+  "cart": {
+    "title": "Your cart",
+    "empty": "Your cart is empty",
+    "empty_hint": "Explore our courses and find something you like",
+    "browse_courses": "Browse courses",
+    "remove": "Remove",
+    "item_count": "{{count}} item",
+    "item_count_plural": "{{count}} items",
+    "checkout": "Checkout"
+  },
+  "success": {
+    "title": "Purchase successful!",
+    "subtitle": "Thank you for your purchase",
+    "message": "We've sent a receipt to {{email}}",
+    "order_number": "Order number: {{orderId}}",
+    "start_learning": "Start learning",
+    "view_orders": "View my orders"
+  },
+  "errors": {
+    "payment_failed": "Payment could not be processed",
+    "card_declined": "Card was declined",
+    "insufficient_funds": "Insufficient funds",
+    "network_error": "Connection error. Please try again.",
+    "generic": "An error occurred. Please try again."
+  },
+  "guarantee": {
+    "title": "Satisfaction guarantee",
+    "description": "30-day money-back guarantee"
+  },
+  "secure": {
+    "title": "Secure payment",
+    "description": "Your data is protected with SSL encryption"
+  }
+}

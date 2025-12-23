@@ -1,0 +1,23 @@
+{
+  "not_found": {
+    "title": "Página não encontrada",
+    "message": "A página que você procura não existe ou foi movida.",
+    "back_home": "Voltar ao início"
+  },
+  "server_error": {
+    "title": "Erro do servidor",
+    "message": "Algo deu errado. Estamos trabalhando para resolver.",
+    "retry": "Tentar novamente"
+  },
+  "network": {
+    "title": "Erro de conexão",
+    "message": "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    "retry": "Tentar novamente"
+  },
+  "api": {
+    "INVALID_CREDENTIALS": "Credenciais inválidas",
+    "EMAIL_EXISTS": "E-mail já cadastrado",
+    "USER_NOT_FOUND": "Usuário não encontrado",
+    "UNKNOWN": "Ocorreu um erro inesperado"
+  }
+}

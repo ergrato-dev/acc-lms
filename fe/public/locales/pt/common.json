@@ -1,0 +1,97 @@
+{
+  "app": {
+    "name": "ACC LMS",
+    "tagline": "Sua plataforma de aprendizado online"
+  },
+  "nav": {
+    "home": "Início",
+    "courses": "Cursos",
+    "my_courses": "Meus Cursos",
+    "login": "Entrar",
+    "register": "Cadastrar",
+    "logout": "Sair",
+    "profile": "Meu Perfil",
+    "account": "Minha Conta",
+    "instructor": "Painel do Instrutor",
+    "admin": "Administração",
+    "cart": "Carrinho",
+    "wishlist": "Lista de Desejos",
+    "search": "Buscar cursos...",
+    "contact": "Contato",
+    "support": "Ajuda"
+  },
+  "footer": {
+    "about": "Sobre Nós",
+    "privacy": "Política de Privacidade",
+    "terms": "Termos de Uso",
+    "contact": "Contato",
+    "support": "Suporte",
+    "copyright": "© {{year}} ACC LMS. Todos os direitos reservados."
+  },
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "create": "Criar",
+    "submit": "Enviar",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "close": "Fechar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "clear": "Limpar",
+    "refresh": "Atualizar",
+    "retry": "Tentar novamente",
+    "loading": "Carregando...",
+    "view_all": "Ver tudo",
+    "learn_more": "Saiba mais"
+  },
+  "status": {
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "pending": "Pendente",
+    "completed": "Concluído",
+    "cancelled": "Cancelado",
+    "draft": "Rascunho",
+    "published": "Publicado"
+  },
+  "time": {
+    "now": "Agora",
+    "today": "Hoje",
+    "yesterday": "Ontem",
+    "days_ago": "Há {{count}} dia",
+    "days_ago_plural": "Há {{count}} dias",
+    "hours_ago": "Há {{count}} hora",
+    "hours_ago_plural": "Há {{count}} horas",
+    "minutes_ago": "Há {{count}} minuto",
+    "minutes_ago_plural": "Há {{count}} minutos"
+  },
+  "validation": {
+    "required": "Este campo é obrigatório",
+    "email": "Digite um e-mail válido",
+    "min_length": "Mínimo de {{min}} caracteres",
+    "max_length": "Máximo de {{max}} caracteres",
+    "password_weak": "A senha deve ter pelo menos 10 caracteres, maiúsculas, minúsculas, números e símbolos",
+    "passwords_match": "As senhas não coincidem"
+  },
+  "language": {
+    "select": "Selecionar idioma",
+    "es": "Español",
+    "en": "English",
+    "pt": "Português"
+  },
+  "accessibility": {
+    "skip_to_content": "Ir para o conteúdo principal",
+    "menu_toggle": "Abrir/fechar menu",
+    "theme_toggle": "Alternar tema",
+    "close_modal": "Fechar janela"
+  },
+  "empty": {
+    "no_results": "Nenhum resultado encontrado",
+    "no_data": "Não há dados disponíveis"
+  }
+}
